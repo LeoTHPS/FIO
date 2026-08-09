@@ -5,21 +5,21 @@ set(CMAKE_CXX_STANDARD 20)
 
 project(FIO)
 add_library(FIO STATIC
-	FIO/File.cpp
+	${CMAKE_CURRENT_LIST_DIR}/FIO/File.cpp
 
-	FIO/Timer.cpp
+	${CMAKE_CURRENT_LIST_DIR}/FIO/Timer.cpp
 
-	FIO/IP.cpp
-	FIO/DNS.cpp
-	FIO/Socket.cpp
+	${CMAKE_CURRENT_LIST_DIR}/FIO/IP.cpp
+	${CMAKE_CURRENT_LIST_DIR}/FIO/DNS.cpp
+	${CMAKE_CURRENT_LIST_DIR}/FIO/Socket.cpp
 
-	FIO/Thread.cpp
-	FIO/ThreadPool.cpp
+	${CMAKE_CURRENT_LIST_DIR}/FIO/Thread.cpp
+	${CMAKE_CURRENT_LIST_DIR}/FIO/ThreadPool.cpp
 )
 target_include_directories(FIO PUBLIC ${CMAKE_CURRENT_LIST_DIR})
 
 if(WIN32)
-	target_sources(FIO PRIVATE FIO/WinSock2.cpp)
+	target_sources(FIO PUBLIC ${CMAKE_CURRENT_LIST_DIR}/FIO/WinSock2.cpp)
 	target_link_libraries(FIO PRIVATE Ws2_32 Mswsock Iphlpapi Shlwapi)
 	target_compile_definitions(FIO PUBLIC -DFIO_WIN32=1 -DWIN32_LEAN_AND_MEAN=1)
 elseif(LINUX)
