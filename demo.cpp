@@ -1,7 +1,6 @@
 #include <atomic>
-#include <cstdio>
-#include <cstdarg>
-#include <cinttypes>
+#include <format>
+#include <iostream>
 
 #include <FIO/DNS.hpp>
 #include <FIO/File.hpp>
@@ -13,32 +12,29 @@
 	#include <FIO/WinSock2.hpp>
 #endif
 
-void print(const char* format, ...)
+void print(std::string_view line)
 {
-	va_list args;
-	va_start(args, format);
+	static std::atomic_flag busy;
+	static FIO::Timer       timer;
 
-	{
-		static std::atomic_flag busy;
-		static FIO::Timer       timer;
+	while (busy.test_and_set(std::memory_order_acquire))
+		while (busy.test(std::memory_order_relaxed))
+			;
 
-		while (busy.test_and_set(std::memory_order_acquire))
-			while (busy.test(std::memory_order_relaxed))
-				;
-
-		printf("[%" PRIu64 "] ", timer.GetElapsed().ToMilliseconds());
+	std::cout << '[' << timer.GetElapsed().ToMilliseconds() << "] ";
 #if defined(FIO_LINUX)
-		printf("[Thread: %" PRIi64 "] ", (int64_t)gettid());
+	std::cout << '[' << gettid() << "] ";
 #elif defined(FIO_WIN32)
-		printf("[Thread: %" PRIu32 "] ", (uint32_t)GetCurrentThreadId());
+	std::cout << '[' << GetCurrentThreadId() << "] ";
 #endif
-		vprintf(format, args);
-		putc('\n', stdout);
+	std::cout << line << std::endl;
 
-		busy.clear(std::memory_order_release);
-	}
-
-	va_end(args);
+	busy.clear(std::memory_order_release);
+}
+template<typename ... TArgs>
+void print(std::string_view format, TArgs ... args)
+{
+	print(std::vformat(format, std::make_format_args(args ...)));
 }
 
 class demo_dns
@@ -58,13 +54,13 @@ public:
 
 	void run()
 	{
-		print("FIO::DNS::Enumerate() -> %i", FIO::DNS::Enumerate(hostname, family, std::bind(&demo_dns::on_enum, this, std::placeholders::_1)));
+		print("FIO::DNS::Enumerate() -> {}", FIO::DNS::Enumerate(hostname, family, std::bind(&demo_dns::on_enum, this, std::placeholders::_1)));
 	}
 
 private:
 	bool on_enum(const FIO::IPAddress& ip_address)
 	{
-		print("%s", ip_address.ToString().c_str());
+		print(ip_address.ToString());
 
 		return true;
 	}
@@ -85,21 +81,24 @@ public:
 
 	void run()
 	{
-		print("threads.Start() -> %i", threads.Start());
+		print("threads.Start() -> {}", threads.Start());
 
-		print("file.Open() -> %i", file.Open());
-		print("file.Associate() -> %i", file.Associate(threads));
+		print("file.Open() -> {}", file.Open());
+		print("file.Associate() -> {}", file.Associate(threads));
 
-		print("file.Read() -> %i", file.Read(buffer, sizeof(buffer), std::bind(&demo_file_in::on_read, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
+		print("file.Read() -> {}", file.Read(buffer, sizeof(buffer), std::bind(&demo_file_in::on_read, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
 
-		// print("threads.Shutdown() -> %i", (threads.Shutdown(), true));
-		print("threads.Join() -> %i", threads.Join());
+		// print("threads.Shutdown() -> {}", (threads.Shutdown(), true));
+		print("threads.Join() -> {}", threads.Join());
 	}
 
 private:
 	void on_read(FIO::File& file, void* buffer, size_t size, size_t number_of_bytes_read)
 	{
-		print("read %" PRIu64 "/%" PRIu64 " bytes (error: 0x%08" PRIX32 ")", file.GetReadPosition(), file.GetSize(), file.GetLastError());
+		print("read {}/{} bytes [error: {}]", file.GetReadPosition(), file.GetSize(), file.GetLastError());
+
+		if (number_of_bytes_read)
+			print("file.Read() -> {}", file.Read(buffer, size, std::bind(&demo_file_in::on_read, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
 	}
 };
 
@@ -118,23 +117,23 @@ public:
 
 	void run()
 	{
-		print("threads.Start() -> %i", threads.Start());
+		print("threads.Start() -> {}", threads.Start());
 
-		print("file.Open() -> %i", file.Open());
-		print("file.Associate() -> %i", file.Associate(threads));
+		print("file.Open() -> {}", file.Open());
+		print("file.Associate() -> {}", file.Associate(threads));
 
-		print("file.Write() -> %i", file.Write(buffer, sizeof(buffer), std::bind(&demo_file_out::on_write, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
+		print("file.Write() -> {}", file.Write(buffer, sizeof(buffer), std::bind(&demo_file_out::on_write, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
 
-		// print("threads.Shutdown() -> %i", (threads.Shutdown(), true));
-		print("threads.Join() -> %i", threads.Join());
+		// print("threads.Shutdown() -> {}", (threads.Shutdown(), true));
+		print("threads.Join() -> {}", threads.Join());
 	}
 
 private:
 	void on_write(FIO::File& file, const void* buffer, size_t size, size_t number_of_bytes_written)
 	{
-		print("wrote %zu bytes (error: 0x%08" PRIX32 ")", number_of_bytes_written, file.GetLastError());
+		print("wrote {} bytes [error: {}]", number_of_bytes_written, file.GetLastError());
 
-		print("file.Write() -> %i", file.Write(buffer, size, std::bind(&demo_file_out::on_write, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
+		print("file.Write() -> {}", file.Write(buffer, size, std::bind(&demo_file_out::on_write, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
 	}
 };
 
@@ -165,42 +164,42 @@ public:
 
 	void run()
 	{
-		print("threads.Start() -> %i", threads.Start());
+		print("threads.Start() -> {}", threads.Start());
 
-		print("socket1.Open() -> %i", socket1.Open());
-		print("socket1.Associate() -> %i", socket1.Associate(threads));
-		print("socket1.Bind() -> %i", socket1.Bind(end_point));
-		print("socket1.Listen() -> %i", socket1.Listen());
-		print("socket1.Accept() -> %i", socket1.Accept(socket1_client, std::bind(&demo_socket_tcp::on_accept, this, std::placeholders::_1, std::placeholders::_2)));
+		print("socket1.Open() -> {}", socket1.Open());
+		print("socket1.Associate() -> {}", socket1.Associate(threads));
+		print("socket1.Bind() -> {}", socket1.Bind(end_point));
+		print("socket1.Listen() -> {}", socket1.Listen());
+		print("socket1.Accept() -> {}", socket1.Accept(socket1_client, std::bind(&demo_socket_tcp::on_accept, this, std::placeholders::_1, std::placeholders::_2)));
 
-		print("socket2.Open() -> %i", socket2.Open());
-		print("socket2.Associate() -> %i", socket2.Associate(threads));
-		print("socket2.Connect() -> %i", socket2.Connect(end_point));
-		print("socket2.Send() -> %i", socket2.Send(socket2_buffer, sizeof(socket2_buffer), std::bind(&demo_socket_tcp::on_send, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
+		print("socket2.Open() -> {}", socket2.Open());
+		print("socket2.Associate() -> {}", socket2.Associate(threads));
+		print("socket2.Connect() -> {}", socket2.Connect(end_point));
+		print("socket2.Send() -> {}", socket2.Send(socket2_buffer, sizeof(socket2_buffer), std::bind(&demo_socket_tcp::on_send, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
 
-		// print("threads.Shutdown() -> %i", (threads.Shutdown(), true));
-		print("threads.Join() -> %i", threads.Join());
+		// print("threads.Shutdown() -> {}", (threads.Shutdown(), true));
+		print("threads.Join() -> {}", threads.Join());
 	}
 
 private:
 	void on_accept(FIO::Socket& socket, FIO::Socket& client)
 	{
-		print("accepted connection from %s (error: 0x%08" PRIX32 ")", client.GetRemoteEndPoint().ToString().c_str(), socket.GetLastError());
+		print("accepted connection from {} [error: {}]", client.GetRemoteEndPoint().ToString(), socket.GetLastError());
 
-		print("socket1_client.Associate() -> %i", client.Associate(threads));
-		print("socket1_client.Receive() -> %i", client.Receive(socket1_buffer, sizeof(socket1_buffer), std::bind(&demo_socket_tcp::on_receive, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
+		print("socket1_client.Associate() -> {}", client.Associate(threads));
+		print("socket1_client.Receive() -> {}", client.Receive(socket1_buffer, sizeof(socket1_buffer), std::bind(&demo_socket_tcp::on_receive, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
 	}
 
 	void on_send(FIO::Socket& socket, const void* buffer, size_t size, size_t number_of_bytes_sent)
 	{
-		print("sent %zu bytes (error: 0x%08" PRIX32 ")", number_of_bytes_sent, socket.GetLastError());
+		print("sent {} bytes [error: {}]", number_of_bytes_sent, socket.GetLastError());
 
 		socket.Send(buffer, size, std::bind(&demo_socket_tcp::on_send, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 	}
 
 	void on_receive(FIO::Socket& socket, void* buffer, size_t size, size_t number_of_bytes_received)
 	{
-		print("received %zu bytes (error: 0x%08" PRIX32 ")", number_of_bytes_received, socket.GetLastError());
+		print("received {} bytes [error: {}]", number_of_bytes_received, socket.GetLastError());
 
 		socket.Receive(buffer, size, std::bind(&demo_socket_tcp::on_receive, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 	}
@@ -231,33 +230,33 @@ public:
 
 	void run()
 	{
-		print("threads.Start() -> %i", threads.Start());
+		print("threads.Start() -> {}", threads.Start());
 
-		print("socket1.Open() -> %i", socket1.Open());
-		print("socket1.Associate() -> %i", socket1.Associate(threads));
-		print("socket1.Bind() -> %i", socket1.Bind(end_point));
-		print("socket1.Receive() -> %i", socket1.Receive(socket1_buffer, sizeof(socket1_buffer), std::bind(&demo_socket_udp::on_receive, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
+		print("socket1.Open() -> {}", socket1.Open());
+		print("socket1.Associate() -> {}", socket1.Associate(threads));
+		print("socket1.Bind() -> {}", socket1.Bind(end_point));
+		print("socket1.Receive() -> {}", socket1.Receive(socket1_buffer, sizeof(socket1_buffer), std::bind(&demo_socket_udp::on_receive, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
 
-		print("socket2.Open() -> %i", socket2.Open());
-		print("socket2.Associate() -> %i", socket2.Associate(threads));
-		print("socket2.Connect() -> %i", socket2.Connect(end_point));
-		print("socket2.Send() -> %i", socket2.Send(socket2_buffer, sizeof(socket2_buffer), std::bind(&demo_socket_udp::on_send, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
+		print("socket2.Open() -> {}", socket2.Open());
+		print("socket2.Associate() -> {}", socket2.Associate(threads));
+		print("socket2.Connect() -> {}", socket2.Connect(end_point));
+		print("socket2.Send() -> {}", socket2.Send(socket2_buffer, sizeof(socket2_buffer), std::bind(&demo_socket_udp::on_send, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
 
-		// print("threads.Shutdown() -> %i", (threads.Shutdown(), true));
-		print("threads.Join() -> %i", threads.Join());
+		// print("threads.Shutdown() -> {}", (threads.Shutdown(), true));
+		print("threads.Join() -> {}", threads.Join());
 	}
 
 private:
 	void on_send(FIO::Socket& socket, const void* buffer, size_t size, size_t number_of_bytes_sent)
 	{
-		print("sent %zu bytes (error: 0x%08" PRIX32 ")", number_of_bytes_sent, socket.GetLastError());
+		print("sent {} bytes [error: {}]", number_of_bytes_sent, socket.GetLastError());
 
 		socket.Send(buffer, size, std::bind(&demo_socket_udp::on_send, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 	}
 
 	void on_receive(FIO::Socket& socket, void* buffer, size_t size, size_t number_of_bytes_received)
 	{
-		print("received %zu bytes (error: 0x%08" PRIX32 ")", number_of_bytes_received, socket.GetLastError());
+		print("received {} bytes [error: {}]", number_of_bytes_received, socket.GetLastError());
 
 		socket.Receive(buffer, size, std::bind(&demo_socket_udp::on_receive, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 	}
