@@ -5,7 +5,9 @@ set(CMAKE_CXX_STANDARD 20)
 
 project(FIO)
 add_library(FIO STATIC
+	${CMAKE_CURRENT_LIST_DIR}/FIO/Path.cpp
 	${CMAKE_CURRENT_LIST_DIR}/FIO/File.cpp
+	${CMAKE_CURRENT_LIST_DIR}/FIO/Directory.cpp
 
 	${CMAKE_CURRENT_LIST_DIR}/FIO/Timer.cpp
 

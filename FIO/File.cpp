@@ -1,4 +1,5 @@
 #include "File.hpp"
+#include "Path.hpp"
 #include "ThreadPool.hpp"
 
 #include <climits>
@@ -195,11 +196,7 @@ int  FIO::File::Delete(std::string_view path)
 
 bool FIO::File::Exists(std::string_view path)
 {
-#if defined(FIO_LINUX)
-	return access(path.data(), F_OK) == 0;
-#elif defined(FIO_WIN32)
-	return PathFileExistsA(path.data()) == TRUE;
-#endif
+	return Path::Exists(path) && Path::IsFile(path);
 }
 
 FIO::File::File(std::string_view path, int mode)

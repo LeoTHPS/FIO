@@ -3,9 +3,11 @@
 #include <iostream>
 
 #include <FIO/DNS.hpp>
+#include <FIO/Path.hpp>
 #include <FIO/File.hpp>
 #include <FIO/Timer.hpp>
 #include <FIO/Socket.hpp>
+#include <FIO/Directory.hpp>
 #include <FIO/ThreadPool.hpp>
 
 #ifdef FIO_WIN32
@@ -262,6 +264,33 @@ private:
 	}
 };
 
+class demo_directory
+{
+	std::string path;
+	bool        path_is_valid;
+
+public:
+	demo_directory()
+		: path_is_valid(FIO::Directory::GetCurrentPath(path))
+	{
+		print("FIO::Directory::GetCurrentPath() -> {}", path_is_valid);
+	}
+
+	void run()
+	{
+		if (path_is_valid)
+			print("FIO::Directory::Enumerate() -> {}", FIO::Directory::Enumerate(path, std::bind(&demo_directory::on_enum, this, std::placeholders::_1, std::placeholders::_2)));
+	}
+
+private:
+	bool on_enum(std::string_view path, int type)
+	{
+		print("{}, {}", type, path);
+
+		return true;
+	}
+};
+
 #define THREAD_COUNT 4
 
 int main(int argc, char* argv[])
@@ -274,6 +303,8 @@ int main(int argc, char* argv[])
 
 	// demo_socket_tcp(FIO::IPEndPoint::Loopback(9001), THREAD_COUNT).run();
 	// demo_socket_udp(FIO::IPEndPoint::Loopback(9001), THREAD_COUNT).run();
+
+	// demo_directory().run();
 
 	return 0;
 }
