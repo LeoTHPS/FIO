@@ -1,6 +1,7 @@
 #include <atomic>
 #include <format>
 #include <iostream>
+#include <iterator>
 
 #include <FIO/DNS.hpp>
 #include <FIO/Path.hpp>
@@ -14,29 +15,31 @@
 	#include <FIO/WinSock2.hpp>
 #endif
 
-void print(std::string_view line)
+template<typename ... T>
+void print(std::string_view format, T ... args)
 {
-	static std::atomic_flag busy;
-	static FIO::Timer       timer;
+	std::ostream_iterator<char> it(std::cout);
+	static std::atomic_flag     busy;
+	static FIO::Timer           timer;
 
 	while (busy.test_and_set(std::memory_order_acquire))
 		while (busy.test(std::memory_order_relaxed))
 			;
 
-	std::cout << '[' << timer.GetElapsed().ToMilliseconds() << "] ";
+	std::format_to(it, "[{:.6f}] ", timer.GetElapsed().ToMicroseconds() / 1000000.0f);
 #if defined(FIO_LINUX)
 	std::cout << '[' << gettid() << "] ";
 #elif defined(FIO_WIN32)
 	std::cout << '[' << GetCurrentThreadId() << "] ";
 #endif
-	std::cout << line << std::endl;
+	if constexpr (sizeof...(T) == 0)
+		std::cout << format;
+	else
+		std::vformat_to(it, format, std::make_format_args(args ...));
+
+	std::cout << std::endl;
 
 	busy.clear(std::memory_order_release);
-}
-template<typename ... TArgs>
-void print(std::string_view format, TArgs ... args)
-{
-	print(std::vformat(format, std::make_format_args(args ...)));
 }
 
 class demo_dns
