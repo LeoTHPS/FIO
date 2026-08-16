@@ -8,6 +8,7 @@
 #include <FIO/File.hpp>
 #include <FIO/Timer.hpp>
 #include <FIO/Socket.hpp>
+#include <FIO/MPSCQueue.hpp>
 #include <FIO/Directory.hpp>
 #include <FIO/ByteBuffer.hpp>
 #include <FIO/ThreadPool.hpp>
@@ -323,6 +324,25 @@ public:
 	}
 };
 
+class demo_mpsc_queue
+{
+	FIO::MPSCQueue<int> queue;
+
+public:
+	demo_mpsc_queue()
+	{
+	}
+
+	void run()
+	{
+		for (int i = 0; i < 100; ++i)
+		{
+			print("queue.Push() -> {}", (queue.Push(std::move(i)), true));
+			print("queue.Pop() -> {}", queue.Pop(i));
+		}
+	}
+};
+
 #define THREAD_COUNT 4
 
 int main(int argc, char* argv[])
@@ -339,6 +359,8 @@ int main(int argc, char* argv[])
 	// demo_directory().run();
 
 	// demo_byte_buffer().run();
+
+	// demo_mpsc_queue().run();
 
 	return 0;
 }
