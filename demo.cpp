@@ -9,6 +9,7 @@
 #include <FIO/Timer.hpp>
 #include <FIO/Socket.hpp>
 #include <FIO/Directory.hpp>
+#include <FIO/ByteBuffer.hpp>
 #include <FIO/ThreadPool.hpp>
 
 #ifdef FIO_WIN32
@@ -294,6 +295,34 @@ private:
 	}
 };
 
+class demo_byte_buffer
+{
+	FIO::ByteBuffer buffer;
+	uint8_t         memory[0xFF];
+
+public:
+	demo_byte_buffer()
+		: buffer(FIO::ByteBuffer::Open(memory, sizeof(memory), FIO::ENDIAN_MACHINE))
+	{
+		memset(memory, 0, sizeof(memory));
+	}
+
+	void run()
+	{
+		std::string str("Hello world");
+		print("buffer.Write() -> {}", buffer.Write(str));
+		print("buffer.Read() -> {}", buffer.Read(str));
+
+		std::wstring wstr(L"Hello world");
+		print("buffer.Write() -> {}", buffer.Write(wstr));
+		print("buffer.Read() -> {}", buffer.Read(wstr));
+
+		uint32_t uint = 0x12345678;
+		print("buffer.Write() -> {}", buffer.Write(uint));
+		print("buffer.Read() -> {}", buffer.Read(uint));
+	}
+};
+
 #define THREAD_COUNT 4
 
 int main(int argc, char* argv[])
@@ -308,6 +337,8 @@ int main(int argc, char* argv[])
 	// demo_socket_udp(FIO::IPEndPoint::Loopback(9001), THREAD_COUNT).run();
 
 	// demo_directory().run();
+
+	// demo_byte_buffer().run();
 
 	return 0;
 }
