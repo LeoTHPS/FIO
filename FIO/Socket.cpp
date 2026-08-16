@@ -31,6 +31,7 @@
 FIO::Socket::Socket(int type, int address_family)
 	: is_open(false),
 	is_bound(false),
+	is_closing(false),
 	is_blocking(true),
 	is_connected(false),
 	is_listening(false),
@@ -58,7 +59,7 @@ FIO::Socket::~Socket()
 
 bool FIO::Socket::SetBlocking(bool value)
 {
-	if (!IsOpen())
+	if (!IsOpen() || is_closing)
 		return false;
 
 #if defined(FIO_LINUX)
@@ -120,10 +121,15 @@ bool FIO::Socket::Open()
 
 	return true;
 }
-void FIO::Socket::Close()
+void FIO::Socket::Close(bool wait_for_io)
 {
 	if (IsOpen())
 	{
+		is_closing = true;
+
+		if (wait_for_io && IsAssociated())
+			thread_pool_io.Wait();
+
 #if defined(FIO_LINUX)
 		close(GetHandle());
 #elif defined(FIO_WIN32)
@@ -141,6 +147,7 @@ void FIO::Socket::Close()
 
 		is_open             = false;
 		is_bound            = false;
+		is_closing          = false;
 		is_blocking         = true;
 		is_connected        = false;
 		is_associated       = false;
@@ -149,7 +156,7 @@ void FIO::Socket::Close()
 
 bool FIO::Socket::Bind(const IPEndPoint& local_ip_end_point)
 {
-	if (!IsOpen())
+	if (!IsOpen() || is_closing)
 		return false;
 
 	sockaddr_storage address;
@@ -172,7 +179,7 @@ bool FIO::Socket::Bind(const IPEndPoint& local_ip_end_point)
 
 int  FIO::Socket::Accept(Socket& socket)
 {
-	if (!IsListening() || (GetType() != socket.GetType()) || (GetAddressFamily() != socket.GetAddressFamily()))
+	if (!IsListening() || is_closing || (GetType() != socket.GetType()) || (GetAddressFamily() != socket.GetAddressFamily()))
 		return 0;
 
 	sockaddr_storage address[2]   = {};
@@ -223,7 +230,7 @@ int  FIO::Socket::Accept(Socket& socket)
 }
 int  FIO::Socket::Accept(Socket& socket, SocketAcceptCallback&& callback)
 {
-	if (!IsListening() || !IsAssociated() || (GetType() != socket.GetType()) || (GetAddressFamily() != socket.GetAddressFamily()))
+	if (!IsListening() || is_closing || !IsAssociated() || (GetType() != socket.GetType()) || (GetAddressFamily() != socket.GetAddressFamily()))
 		return 0;
 
 #if defined(FIO_LINUX)
@@ -281,7 +288,7 @@ bool FIO::Socket::Listen()
 }
 bool FIO::Socket::Listen(uint32_t backlog)
 {
-	if (!IsOpen() || IsConnected() || IsListening())
+	if (!IsOpen() || IsConnected() || IsListening() || is_closing)
 		return false;
 
 	if (listen(GetHandle(), (int)(backlog & INT_MAX)) == SOCKET_ERROR)
@@ -299,7 +306,7 @@ bool FIO::Socket::Listen(uint32_t backlog)
 
 bool FIO::Socket::Connect(const IPEndPoint& remote_ip_end_point)
 {
-	if (!IsOpen() || IsConnected() || IsListening())
+	if (!IsOpen() || IsConnected() || IsListening() || is_closing)
 		return false;
 
 	sockaddr_storage address;
@@ -327,7 +334,7 @@ bool FIO::Socket::Connect(const IPEndPoint& remote_ip_end_point)
 }
 int  FIO::Socket::Connect(const IPEndPoint& remote_ip_end_point, SocketConnectCallback&& callback)
 {
-	if (!IsOpen() || IsConnected() || IsListening() || !IsAssociated())
+	if (!IsOpen() || IsConnected() || IsListening() || !IsAssociated() || is_closing)
 		return 0;
 
 	sockaddr_storage address;
@@ -387,7 +394,7 @@ int  FIO::Socket::Connect(const IPEndPoint& remote_ip_end_point, SocketConnectCa
 
 bool FIO::Socket::Shutdown(int type)
 {
-	if (!IsOpen())
+	if (!IsOpen() || is_closing)
 		return false;
 
 	if (shutdown(GetHandle(), type) == SOCKET_ERROR)
@@ -402,7 +409,7 @@ bool FIO::Socket::Shutdown(int type)
 
 bool FIO::Socket::Associate(ThreadPool& pool)
 {
-	if (!IsOpen())
+	if (!IsOpen() || is_closing)
 		return false;
 
 #if defined(FIO_LINUX)
@@ -420,7 +427,7 @@ bool FIO::Socket::Associate(ThreadPool& pool)
 
 bool FIO::Socket::Send(const void* buffer, size_t size, size_t& number_of_bytes_sent)
 {
-	if (!IsOpen())
+	if (!IsOpen() || is_closing)
 		return false;
 
 	int num_bytes_sent;
@@ -447,7 +454,7 @@ bool FIO::Socket::Send(const void* buffer, size_t size, size_t& number_of_bytes_
 }
 int  FIO::Socket::Send(const void* buffer, size_t size, SocketSendCallback&& callback)
 {
-	if (!IsOpen() || !IsAssociated())
+	if (!IsOpen() || !IsAssociated() || is_closing)
 		return 0;
 
 #if defined(FIO_LINUX)
@@ -490,7 +497,7 @@ int  FIO::Socket::Send(const void* buffer, size_t size, SocketSendCallback&& cal
 
 bool FIO::Socket::SendTo(const void* buffer, size_t size, const IPEndPoint& remote_ip_end_point, size_t& number_of_bytes_sent)
 {
-	if (!IsOpen())
+	if (!IsOpen() || is_closing)
 		return false;
 
 	sockaddr_storage address;
@@ -521,7 +528,7 @@ bool FIO::Socket::SendTo(const void* buffer, size_t size, const IPEndPoint& remo
 }
 int  FIO::Socket::SendTo(const void* buffer, size_t size, const IPEndPoint& remote_ip_end_point, SocketSendToCallback&& callback)
 {
-	if (!IsOpen() || !IsAssociated())
+	if (!IsOpen() || !IsAssociated() || is_closing)
 		return 0;
 
 	sockaddr_storage address;
@@ -569,7 +576,7 @@ int  FIO::Socket::SendTo(const void* buffer, size_t size, const IPEndPoint& remo
 
 bool FIO::Socket::Receive(void* buffer, size_t size, size_t& number_of_bytes_received)
 {
-	if (!IsOpen())
+	if (!IsOpen() || is_closing)
 		return false;
 
 	int num_bytes_received;
@@ -595,7 +602,7 @@ bool FIO::Socket::Receive(void* buffer, size_t size, size_t& number_of_bytes_rec
 }
 int  FIO::Socket::Receive(void* buffer, size_t size, SocketReceiveCallback&& callback)
 {
-	if (!IsOpen() || !IsAssociated())
+	if (!IsOpen() || !IsAssociated() || is_closing)
 		return 0;
 
 #if defined(FIO_LINUX)
@@ -638,7 +645,7 @@ int  FIO::Socket::Receive(void* buffer, size_t size, SocketReceiveCallback&& cal
 
 bool FIO::Socket::ReceiveFrom(void* buffer, size_t size, IPEndPoint& remote_ip_end_point, size_t& number_of_bytes_received)
 {
-	if (!IsOpen())
+	if (!IsOpen() || is_closing)
 		return false;
 
 	sockaddr_storage address;
@@ -670,7 +677,7 @@ bool FIO::Socket::ReceiveFrom(void* buffer, size_t size, IPEndPoint& remote_ip_e
 }
 int  FIO::Socket::ReceiveFrom(void* buffer, size_t size, SocketReceiveFromCallback&& callback)
 {
-	if (!IsOpen() || !IsAssociated())
+	if (!IsOpen() || !IsAssociated() || is_closing)
 		return 0;
 
 #if defined(FIO_LINUX)

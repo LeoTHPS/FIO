@@ -125,6 +125,7 @@ namespace FIO
 
 		bool                is_open;
 		bool                is_bound;
+		bool                is_closing;
 		bool                is_blocking;
 		bool                is_connected;
 		bool                is_listening;
@@ -221,7 +222,7 @@ namespace FIO
 		bool SetBlocking(bool value = true);
 
 		bool Open();
-		void Close();
+		void Close(bool wait_for_io = false);
 
 		bool Bind(const IPEndPoint& local_ip_end_point);
 

@@ -201,6 +201,7 @@ bool FIO::File::Exists(std::string_view path)
 
 FIO::File::File(std::string_view path, int mode)
 	: is_open(false),
+	is_closing(false),
 	is_associated(false),
 	mode(mode),
 	path(path),
@@ -331,10 +332,15 @@ int  FIO::File::Open()
 
 	return 1;
 }
-void FIO::File::Close()
+void FIO::File::Close(bool wait_for_io)
 {
 	if (IsOpen())
 	{
+		is_closing = true;
+
+		if (wait_for_io && IsAssociated())
+			thread_pool_io.Wait();
+
 #if defined(FIO_LINUX)
 		close(handle);
 #elif defined(FIO_WIN32)
@@ -352,13 +358,14 @@ void FIO::File::Close()
 		thread_pool   = nullptr;
 
 		is_open       = false;
+		is_closing    = false;
 		is_associated = false;
 	}
 }
 
 bool FIO::File::Associate(ThreadPool& pool)
 {
-	if (!IsOpen())
+	if (!IsOpen() || is_closing)
 		return false;
 
 #if defined(FIO_LINUX)
@@ -376,7 +383,7 @@ bool FIO::File::Associate(ThreadPool& pool)
 
 bool FIO::File::Read(void* buffer, size_t size, size_t& number_of_bytes_read)
 {
-	if (!IsOpen() || IsWriteOnly())
+	if (!IsOpen() || IsWriteOnly() || is_closing)
 		return false;
 
 	if (!Position_Select(POSITION_TYPE_READ))
@@ -417,7 +424,7 @@ bool FIO::File::Read(void* buffer, size_t size, size_t& number_of_bytes_read)
 }
 bool FIO::File::Read(void* buffer, size_t size, FileReadCallback&& callback)
 {
-	if (!IsOpen() || IsWriteOnly())
+	if (!IsOpen() || IsWriteOnly() || is_closing)
 		return false;
 
 	if (!Position_SelectAsync(POSITION_TYPE_READ))
@@ -457,7 +464,7 @@ bool FIO::File::Read(void* buffer, size_t size, FileReadCallback&& callback)
 
 bool FIO::File::Write(const void* buffer, size_t size, size_t& number_of_bytes_written)
 {
-	if (!IsOpen() || IsReadOnly())
+	if (!IsOpen() || IsReadOnly() || is_closing)
 		return false;
 
 	if (!Position_Select(POSITION_TYPE_WRITE))
@@ -493,7 +500,7 @@ bool FIO::File::Write(const void* buffer, size_t size, size_t& number_of_bytes_w
 }
 bool FIO::File::Write(const void* buffer, size_t size, FileWriteCallback&& callback)
 {
-	if (!IsOpen() || IsReadOnly())
+	if (!IsOpen() || IsReadOnly() || is_closing)
 		return false;
 
 	if (!Position_SelectAsync(POSITION_TYPE_WRITE))

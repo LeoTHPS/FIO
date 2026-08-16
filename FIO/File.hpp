@@ -65,6 +65,7 @@ namespace FIO
 		};
 
 		bool                  is_open;
+		bool                  is_closing;
 		bool                  is_associated;
 
 		const int             mode;
@@ -180,7 +181,7 @@ namespace FIO
 		// @return -1 on not found
 		// @return -2 on already exists
 		int  Open();
-		void Close();
+		void Close(bool wait_for_io = false);
 
 		bool Associate(ThreadPool& pool);
 
