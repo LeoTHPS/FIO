@@ -1,10 +1,10 @@
+#include "DNS.hpp"
+
 #if defined(FIO_LINUX)
 	#include <netdb.h>
 #elif defined(FIO_WIN32)
 	#include <Ws2Tcpip.h>
 #endif
-
-#include "DNS.hpp"
 
 // @return 0 on error
 // @return -1 on not found
