@@ -229,9 +229,7 @@ bool FIO::ThreadPool::Thread_HandleIOCP(const OVERLAPPED_ENTRY& entry)
 	{
 		case IOCP_REQUEST_KEY_IO:
 			if (auto io = (IOContext*)entry.lpOverlapped)
-				// io->Callback(*io, entry.dwNumberOfBytesTransferred);
-				// stash callback on the stack to avoid a potential memory corruption if/when IOContext is released
-				ThreadPoolIOCallback(std::move(io->Callback))(*io, entry.dwNumberOfBytesTransferred);
+				io->Callback(*io, entry.dwNumberOfBytesTransferred);
 			break;
 
 		case IOCP_REQUEST_KEY_FUNC:
