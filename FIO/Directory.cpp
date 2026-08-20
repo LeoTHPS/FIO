@@ -89,7 +89,7 @@ bool FIO::Directory::Enumerate(std::string_view path, const DirectoryEnumCallbac
 	while (dir_entry = readdir64(dir))
 	{
 		auto entry_path = Path::Combine(path, dir_entry->d_name);
-		int  entry_type = (dir_entry->d_type == DT_DIR) ? DIRECTORY_ENTRY_TYPE_DIRECTORY : DIRECTORY_ENTRY_TYPE_FILE;
+		int  entry_type = (dir_entry->d_type == DT_DIR) ? ENTRY_TYPE_DIRECTORY : ENTRY_TYPE_FILE;
 
 		if (!callback(entry_path, entry_type))
 			break;
@@ -107,7 +107,7 @@ bool FIO::Directory::Enumerate(std::string_view path, const DirectoryEnumCallbac
 	do
 	{
 		auto entry_path = Path::Combine(path, data.cFileName);
-		int  entry_type = (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? DIRECTORY_ENTRY_TYPE_DIRECTORY : DIRECTORY_ENTRY_TYPE_FILE;
+		int  entry_type = (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? ENTRY_TYPE_DIRECTORY : ENTRY_TYPE_FILE;
 
 		if (!callback(entry_path, entry_type))
 			break;
@@ -149,4 +149,16 @@ bool FIO::Directory::GetCurrentPath(std::string& value)
 #endif
 
 	return false;
+}
+bool FIO::Directory::SetCurrentPath(std::string_view value)
+{
+#if defined(FIO_LINUX)
+	if (chdir(value.data()) == -1)
+		return false;
+#elif defined(FIO_WIN32)
+	if (!SetCurrentDirectoryA(value.data()))
+		return false;
+#endif
+
+	return true;
 }

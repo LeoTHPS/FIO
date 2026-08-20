@@ -43,7 +43,7 @@ bool FIO::Thread::Join()
 	return true;
 }
 
-bool FIO::Thread::Start(ThreadMain&& main)
+bool FIO::Thread::Start(Main&& main)
 {
 	if (IsRunning())
 		return false;

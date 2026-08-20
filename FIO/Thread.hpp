@@ -9,16 +9,15 @@
 
 namespace FIO
 {
-	class Thread;
-	class ThreadPool;
-
-	typedef std::function<void()> ThreadMain;
-
 	class Thread
 	{
+	public:
+		typedef std::function<void()> Main;
+
+	private:
 		bool       is_running;
 
-		ThreadMain main;
+		Main       main;
 #if defined(FIO_LINUX)
 		int        error;
 		pthread_t  handle;
@@ -52,7 +51,7 @@ namespace FIO
 
 		bool Join();
 
-		bool Start(ThreadMain&& main);
+		bool Start(Main&& main);
 		bool Terminate();
 
 	private:

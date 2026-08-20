@@ -13,22 +13,22 @@
 
 namespace FIO
 {
-	enum FILE_MODE
-	{
-		FILE_MODE_READ     = 0x1,
-		FILE_MODE_WRITE    = 0x2,
-		FILE_MODE_APPEND   = 0x4,
-		FILE_MODE_CREATE   = 0x8, // If the file exists then open it. Otherwise create it
-		FILE_MODE_TRUNCATE = 0x10 // If the file exists then truncate it. Otherwise create it
-	};
-
-	class File;
-
-	typedef std::function<void(File& file, void* buffer, size_t size, size_t number_of_bytes_read)>          FileReadCallback;
-	typedef std::function<void(File& file, const void* buffer, size_t size, size_t number_of_bytes_written)> FileWriteCallback;
-
 	class File
 	{
+	public:
+		enum MODE
+		{
+			MODE_READ     = 0x1,
+			MODE_WRITE    = 0x2,
+			MODE_APPEND   = 0x4,
+			MODE_CREATE   = 0x8, // If the file exists then open it. Otherwise create it
+			MODE_TRUNCATE = 0x10 // If the file exists then truncate it. Otherwise create it
+		};
+
+		typedef std::function<void(File& file, void* buffer, size_t size, size_t number_of_bytes_read)>          ReadCallback;
+		typedef std::function<void(File& file, const void* buffer, size_t size, size_t number_of_bytes_written)> WriteCallback;
+
+	private:
 		enum POSITION_TYPE
 		{
 			POSITION_TYPE_NONE = -1,
@@ -47,9 +47,9 @@ namespace FIO
 				void*  Buffer;
 			};
 
-			ThreadPoolIOContext IO;
-			BufferContext       Buffer;
-			FileReadCallback    Callback;
+			ThreadPool::IOContext IO;
+			BufferContext         Buffer;
+			ReadCallback          Callback;
 		};
 		struct IOContext_Write
 		{
@@ -59,9 +59,9 @@ namespace FIO
 				const void* Buffer;
 			};
 
-			ThreadPoolIOContext IO;
-			BufferContext       Buffer;
-			FileWriteCallback   Callback;
+			ThreadPool::IOContext IO;
+			BufferContext         Buffer;
+			WriteCallback         Callback;
 		};
 
 		bool                  is_open;
@@ -82,7 +82,7 @@ namespace FIO
 		std::atomic<int>      position_type;
 
 		ThreadPool*           thread_pool;
-		ThreadPoolIOManager   thread_pool_io;
+		ThreadPool::IOManager thread_pool_io;
 
 		File(File&&) = delete;
 		File(const File&) = delete;
@@ -120,12 +120,12 @@ namespace FIO
 
 		constexpr bool  IsReadOnly() const
 		{
-			return (mode & FILE_MODE_READ) && !(mode & FILE_MODE_WRITE);
+			return (mode & MODE_READ) && !(mode & MODE_WRITE);
 		}
 
 		constexpr bool  IsWriteOnly() const
 		{
-			return (mode & FILE_MODE_WRITE) && !(mode & FILE_MODE_READ);
+			return (mode & MODE_WRITE) && !(mode & MODE_READ);
 		}
 
 		constexpr bool  IsAssociated() const
@@ -186,10 +186,10 @@ namespace FIO
 		bool Associate(ThreadPool& pool);
 
 		bool Read(void* buffer, size_t size, size_t& number_of_bytes_read);
-		bool Read(void* buffer, size_t size, FileReadCallback&& callback);
+		bool Read(void* buffer, size_t size, ReadCallback&& callback);
 
 		bool Write(const void* buffer, size_t size, size_t& number_of_bytes_written);
-		bool Write(const void* buffer, size_t size, FileWriteCallback&& callback);
+		bool Write(const void* buffer, size_t size, WriteCallback&& callback);
 
 	private:
 		uint64_t Position_Get(int type) const;
@@ -201,7 +201,7 @@ namespace FIO
 		void     Position_IncrementAsync(int type, size_t value);
 
 	private:
-		void OnRead(ThreadPoolIOContext& io, size_t number_of_bytes_transferred);
-		void OnWrite(ThreadPoolIOContext& io, size_t number_of_bytes_transferred);
+		void OnRead(ThreadPool::IOContext& io, size_t number_of_bytes_transferred);
+		void OnWrite(ThreadPool::IOContext& io, size_t number_of_bytes_transferred);
 	};
 }

@@ -68,7 +68,7 @@ int  FIO::DNS::Resolve(IPAddress& ip_address, std::string_view host, int family)
 
 	return -1;
 }
-bool FIO::DNS::Enumerate(std::string_view host, int family, const DNSEnumCallback& callback)
+bool FIO::DNS::Enumerate(std::string_view host, int family, const EnumCallback& callback)
 {
 	addrinfo* result;
 

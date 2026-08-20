@@ -7,16 +7,16 @@
 	#define INVALID_THREAD_POOL_HANDLE INVALID_HANDLE_VALUE
 #endif
 
-FIO::ThreadPoolIOManager::ThreadPoolIOManager()
+FIO::ThreadPool::IOManager::IOManager()
 	: list_busy(false),
 	list_empty(true)
 {
 }
-FIO::ThreadPoolIOManager::~ThreadPoolIOManager()
+FIO::ThreadPool::IOManager::~IOManager()
 {
 	Wait();
 }
-void FIO::ThreadPoolIOManager::Add(Context& value)
+void FIO::ThreadPool::IOManager::Add(Context& value)
 {
 	Lock();
 
@@ -24,7 +24,7 @@ void FIO::ThreadPoolIOManager::Add(Context& value)
 
 	Unlock();
 }
-void FIO::ThreadPoolIOManager::Remove(Context& value)
+void FIO::ThreadPool::IOManager::Remove(Context& value)
 {
 	Lock();
 
@@ -44,7 +44,7 @@ void FIO::ThreadPoolIOManager::Remove(Context& value)
 
 	Unlock();
 }
-void FIO::ThreadPoolIOManager::Wait() const
+void FIO::ThreadPool::IOManager::Wait() const
 {
 	list_empty.wait(false);
 }
@@ -233,7 +233,7 @@ bool FIO::ThreadPool::Thread_HandleIOCP(const OVERLAPPED_ENTRY& entry)
 			break;
 
 		case IOCP_REQUEST_KEY_FUNC:
-			if (auto function = (ThreadPoolFunction*)entry.lpOverlapped)
+			if (auto function = (Function*)entry.lpOverlapped)
 			{
 				(*function)();
 
@@ -242,7 +242,7 @@ bool FIO::ThreadPool::Thread_HandleIOCP(const OVERLAPPED_ENTRY& entry)
 			break;
 
 		case IOCP_REQUEST_KEY_FUNC_PTR:
-			if (auto function = (const ThreadPoolFunction*)entry.lpOverlapped)
+			if (auto function = (const Function*)entry.lpOverlapped)
 				(*function)();
 			break;
 

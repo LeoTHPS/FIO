@@ -228,7 +228,7 @@ int  FIO::Socket::Accept(Socket& socket)
 
 	return 1;
 }
-int  FIO::Socket::Accept(Socket& socket, SocketAcceptCallback&& callback)
+int  FIO::Socket::Accept(Socket& socket, AcceptCallback&& callback)
 {
 	if (!IsListening() || is_closing || !IsAssociated() || (GetType() != socket.GetType()) || (GetAddressFamily() != socket.GetAddressFamily()))
 		return 0;
@@ -332,7 +332,7 @@ bool FIO::Socket::Connect(const IPEndPoint& remote_ip_end_point)
 
 	return true;
 }
-int  FIO::Socket::Connect(const IPEndPoint& remote_ip_end_point, SocketConnectCallback&& callback)
+int  FIO::Socket::Connect(const IPEndPoint& remote_ip_end_point, ConnectCallback&& callback)
 {
 	if (!IsOpen() || IsConnected() || IsListening() || !IsAssociated() || is_closing)
 		return 0;
@@ -452,7 +452,7 @@ bool FIO::Socket::Send(const void* buffer, size_t size, size_t& number_of_bytes_
 
 	return true;
 }
-int  FIO::Socket::Send(const void* buffer, size_t size, SocketSendCallback&& callback)
+int  FIO::Socket::Send(const void* buffer, size_t size, SendCallback&& callback)
 {
 	if (!IsOpen() || !IsAssociated() || is_closing)
 		return 0;
@@ -526,7 +526,7 @@ bool FIO::Socket::SendTo(const void* buffer, size_t size, const IPEndPoint& remo
 
 	return true;
 }
-int  FIO::Socket::SendTo(const void* buffer, size_t size, const IPEndPoint& remote_ip_end_point, SocketSendToCallback&& callback)
+int  FIO::Socket::SendTo(const void* buffer, size_t size, const IPEndPoint& remote_ip_end_point, SendToCallback&& callback)
 {
 	if (!IsOpen() || !IsAssociated() || is_closing)
 		return 0;
@@ -600,7 +600,7 @@ bool FIO::Socket::Receive(void* buffer, size_t size, size_t& number_of_bytes_rec
 
 	return true;
 }
-int  FIO::Socket::Receive(void* buffer, size_t size, SocketReceiveCallback&& callback)
+int  FIO::Socket::Receive(void* buffer, size_t size, ReceiveCallback&& callback)
 {
 	if (!IsOpen() || !IsAssociated() || is_closing)
 		return 0;
@@ -675,7 +675,7 @@ bool FIO::Socket::ReceiveFrom(void* buffer, size_t size, IPEndPoint& remote_ip_e
 
 	return true;
 }
-int  FIO::Socket::ReceiveFrom(void* buffer, size_t size, SocketReceiveFromCallback&& callback)
+int  FIO::Socket::ReceiveFrom(void* buffer, size_t size, ReceiveFromCallback&& callback)
 {
 	if (!IsOpen() || !IsAssociated() || is_closing)
 		return 0;
@@ -721,7 +721,7 @@ int  FIO::Socket::ReceiveFrom(void* buffer, size_t size, SocketReceiveFromCallba
 
 #define fio_socket_get_io_context(type, context) (type*)&context
 #define fio_socket_remove_io_context(context)    thread_pool_io.Remove(context->IO); delete context
-void FIO::Socket::OnAccept(ThreadPoolIOContext& io, size_t number_of_bytes_transferred)
+void FIO::Socket::OnAccept(ThreadPool::IOContext& io, size_t number_of_bytes_transferred)
 {
 	auto accept = fio_socket_get_io_context(IOContext_Accept, io);
 
@@ -782,7 +782,7 @@ void FIO::Socket::OnAccept(ThreadPoolIOContext& io, size_t number_of_bytes_trans
 
 	fio_socket_remove_io_context(accept);
 }
-void FIO::Socket::OnConnect(ThreadPoolIOContext& io, size_t number_of_bytes_transferred)
+void FIO::Socket::OnConnect(ThreadPool::IOContext& io, size_t number_of_bytes_transferred)
 {
 	auto connect = fio_socket_get_io_context(IOContext_Connect, io);
 
@@ -819,7 +819,7 @@ void FIO::Socket::OnConnect(ThreadPoolIOContext& io, size_t number_of_bytes_tran
 
 	fio_socket_remove_io_context(connect);
 }
-void FIO::Socket::OnSend(ThreadPoolIOContext& io, size_t number_of_bytes_transferred)
+void FIO::Socket::OnSend(ThreadPool::IOContext& io, size_t number_of_bytes_transferred)
 {
 	auto send = fio_socket_get_io_context(IOContext_Send, io);
 
@@ -834,7 +834,7 @@ void FIO::Socket::OnSend(ThreadPoolIOContext& io, size_t number_of_bytes_transfe
 
 	fio_socket_remove_io_context(send);
 }
-void FIO::Socket::OnSendTo(ThreadPoolIOContext& io, size_t number_of_bytes_transferred)
+void FIO::Socket::OnSendTo(ThreadPool::IOContext& io, size_t number_of_bytes_transferred)
 {
 	auto send_to = fio_socket_get_io_context(IOContext_SendTo, io);
 
@@ -849,7 +849,7 @@ void FIO::Socket::OnSendTo(ThreadPoolIOContext& io, size_t number_of_bytes_trans
 
 	fio_socket_remove_io_context(send_to);
 }
-void FIO::Socket::OnReceive(ThreadPoolIOContext& io, size_t number_of_bytes_transferred)
+void FIO::Socket::OnReceive(ThreadPool::IOContext& io, size_t number_of_bytes_transferred)
 {
 	auto receive = fio_socket_get_io_context(IOContext_Receive, io);
 
@@ -864,7 +864,7 @@ void FIO::Socket::OnReceive(ThreadPoolIOContext& io, size_t number_of_bytes_tran
 
 	fio_socket_remove_io_context(receive);
 }
-void FIO::Socket::OnReceiveFrom(ThreadPoolIOContext& io, size_t number_of_bytes_transferred)
+void FIO::Socket::OnReceiveFrom(ThreadPool::IOContext& io, size_t number_of_bytes_transferred)
 {
 	auto receive_from = fio_socket_get_io_context(IOContext_ReceiveFrom, io);
 

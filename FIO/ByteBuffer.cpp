@@ -33,7 +33,7 @@ FIO::ByteBuffer FIO::ByteBuffer::Open(const void* buffer, size_t size, int endia
 
 FIO::ByteBuffer::ByteBuffer()
 	: buffer(0, 0),
-	buffer_endian(ENDIAN_MACHINE),
+	buffer_endian(Endian::MACHINE),
 	buffer_capacity(0),
 	buffer_allocated(true),
 	buffer_read(buffer.data()),
@@ -52,7 +52,7 @@ FIO::ByteBuffer::ByteBuffer(ByteBuffer&& buffer)
 	buffer_write(buffer.buffer_write),
 	buffer_write_position(buffer.buffer_write_position)
 {
-	buffer.buffer_endian         = ENDIAN_MACHINE;
+	buffer.buffer_endian         = Endian::MACHINE;
 	buffer.buffer_capacity       = 0;
 	buffer.buffer_allocated      = true;
 	buffer.buffer_read           = buffer.buffer.data();
@@ -189,7 +189,7 @@ bool FIO::ByteBuffer::Read(std::wstring& value)
 	for (size_t i = 0, j = offset; j < capacity; ++i, j += sizeof(wchar_t))
 		if (!*((const wchar_t*)&buffer_read[j]))
 		{
-			if (GetEndian() == ENDIAN_MACHINE)
+			if (GetEndian() == Endian::MACHINE)
 				value.assign((const wchar_t*)&buffer_read[offset], i);
 			else
 			{
@@ -199,7 +199,7 @@ bool FIO::ByteBuffer::Read(std::wstring& value)
 				auto dest = value.data();
 
 				for (size_t j = 0; j < i; ++j, ++src, ++dest)
-					*dest = Flip(*src);
+					*dest = Endian::Flip(*src);
 			}
 
 			buffer_read_position += (i * sizeof(wchar_t)) + sizeof(wchar_t);
@@ -246,7 +246,7 @@ bool FIO::ByteBuffer::Write(std::wstring_view value)
 	if (!buffer_write || ((offset + size + sizeof(wchar_t)) > GetCapacity()))
 		return false;
 
-	if (GetEndian() == ENDIAN_MACHINE)
+	if (GetEndian() == Endian::MACHINE)
 		memcpy(buffer_write + offset, value.data(), size);
 	else
 	{
@@ -254,7 +254,7 @@ bool FIO::ByteBuffer::Write(std::wstring_view value)
 		auto dest = (wchar_t*)&buffer_write[offset];
 
 		for (size_t i = 0; i < value.length(); ++i, ++src, ++dest)
-			*dest = Flip(*src);
+			*dest = Endian::Flip(*src);
 	}
 
 	*((wchar_t*)&buffer_write[offset + size]) = 0;
@@ -282,7 +282,7 @@ FIO::ByteBuffer& FIO::ByteBuffer::operator = (ByteBuffer&& buffer)
 	this->buffer                 = std::move(buffer.buffer);
 
 	this->buffer_endian          = buffer.buffer_endian;
-	buffer.buffer_endian         = ENDIAN_MACHINE;
+	buffer.buffer_endian         = Endian::MACHINE;
 
 	this->buffer_capacity        = buffer.buffer_capacity;
 	buffer.buffer_capacity       = 0;

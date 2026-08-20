@@ -81,7 +81,7 @@ class demo_file_in
 
 public:
 	demo_file_in(std::string_view path, size_t thread_count)
-		: file(path, FIO::FILE_MODE_READ),
+		: file(path, FIO::File::MODE_READ),
 		threads(thread_count)
 	{
 	}
@@ -117,7 +117,7 @@ class demo_file_out
 
 public:
 	demo_file_out(std::string_view path, size_t thread_count)
-		: file(path, FIO::FILE_MODE_WRITE | FIO::FILE_MODE_TRUNCATE),
+		: file(path, FIO::File::MODE_WRITE | FIO::File::MODE_TRUNCATE),
 		threads(thread_count)
 	{
 	}
@@ -163,9 +163,9 @@ public:
 	demo_socket_tcp(FIO::IPEndPoint&& local_end_point, size_t thread_count)
 		: threads(thread_count),
 		end_point(std::move(local_end_point)),
-		socket1(FIO::SOCKET_TYPE_TCP, end_point.Host.Family),
-		socket1_client(FIO::SOCKET_TYPE_TCP, end_point.Host.Family),
-		socket2(FIO::SOCKET_TYPE_TCP, end_point.Host.Family)
+		socket1(FIO::Socket::TYPE_TCP, end_point.Host.Family),
+		socket1_client(FIO::Socket::TYPE_TCP, end_point.Host.Family),
+		socket2(FIO::Socket::TYPE_TCP, end_point.Host.Family)
 	{
 	}
 
@@ -230,8 +230,8 @@ public:
 	demo_socket_udp(FIO::IPEndPoint&& local_end_point, size_t thread_count)
 		: threads(thread_count),
 		end_point(std::move(local_end_point)),
-		socket1(FIO::SOCKET_TYPE_UDP, end_point.Host.Family),
-		socket2(FIO::SOCKET_TYPE_UDP, end_point.Host.Family)
+		socket1(FIO::Socket::TYPE_UDP, end_point.Host.Family),
+		socket2(FIO::Socket::TYPE_UDP, end_point.Host.Family)
 	{
 	}
 
@@ -303,7 +303,7 @@ class demo_byte_buffer
 
 public:
 	demo_byte_buffer()
-		: buffer(FIO::ByteBuffer::Open(memory, sizeof(memory), FIO::ENDIAN_MACHINE))
+		: buffer(FIO::ByteBuffer::Open(memory, sizeof(memory), FIO::Endian::MACHINE))
 	{
 		memset(memory, 0, sizeof(memory));
 	}

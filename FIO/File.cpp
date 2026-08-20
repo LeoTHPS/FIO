@@ -26,8 +26,8 @@
 int  FIO::File::Copy(std::string_view source, std::string_view destination)
 {
 #if defined(FIO_LINUX)
-	File input(std::string(source),       FILE_MODE_READ);
-	File output(std::string(destination), FILE_MODE_TRUNCATE);
+	File input(std::string(source),       MODE_READ);
+	File output(std::string(destination), MODE_TRUNCATE);
 
 	switch (input.Open())
 	{
@@ -75,8 +75,8 @@ int  FIO::File::Copy(std::string_view source, std::string_view destination)
 int  FIO::File::Move(std::string_view source, std::string_view destination)
 {
 #if defined(FIO_LINUX)
-	File input(std::string(source),       FILE_MODE_READ);
-	File output(std::string(destination), FILE_MODE_TRUNCATE);
+	File input(std::string(source),       MODE_READ);
+	File output(std::string(destination), MODE_TRUNCATE);
 
 	switch (input.Open())
 	{
@@ -242,8 +242,8 @@ int  FIO::File::Open()
 
 #if defined(FIO_LINUX)
 	int  flags     = O_LARGEFILE;
-	bool can_read  = GetMode() & FILE_MODE_READ;
-	bool can_write = GetMode() & FILE_MODE_WRITE;
+	bool can_read  = GetMode() & MODE_READ;
+	bool can_write = GetMode() & MODE_WRITE;
 
 	if (can_read && can_write)
 		flags |= O_RDWR;
@@ -252,9 +252,9 @@ int  FIO::File::Open()
 	else if (!can_read && can_write)
 		flags |= O_WRONLY;
 
-	// if (GetMode() & FILE_MODE_APPEND)   flags |= O_APPEND;
-	if (GetMode() & FILE_MODE_CREATE)   flags |= O_CREAT;
-	if (GetMode() & FILE_MODE_TRUNCATE) flags |= O_TRUNC;
+	// if (GetMode() & MODE_APPEND)   flags |= O_APPEND;
+	if (GetMode() & MODE_CREATE)   flags |= O_CREAT;
+	if (GetMode() & MODE_TRUNCATE) flags |= O_TRUNC;
 
 	if ((handle = open(GetPath().c_str(), flags)) == INVALID_FILE_HANDLE)
 	{
@@ -288,11 +288,11 @@ int  FIO::File::Open()
 	DWORD access      = 0;
 	DWORD disposition = OPEN_EXISTING;
 
-	if (GetMode() & FILE_MODE_READ)     access |= FILE_GENERIC_READ;
-	if (GetMode() & FILE_MODE_WRITE)    access |= FILE_GENERIC_WRITE;
-	// if (GetMode() & FILE_MODE_APPEND)   access |= FILE_APPEND_DATA;
-	if (GetMode() & FILE_MODE_CREATE)   disposition = OPEN_ALWAYS;
-	if (GetMode() & FILE_MODE_TRUNCATE) disposition = CREATE_ALWAYS;
+	if (GetMode() & MODE_READ)     access |= FILE_GENERIC_READ;
+	if (GetMode() & MODE_WRITE)    access |= FILE_GENERIC_WRITE;
+	// if (GetMode() & MODE_APPEND)   access |= FILE_APPEND_DATA;
+	if (GetMode() & MODE_CREATE)   disposition = OPEN_ALWAYS;
+	if (GetMode() & MODE_TRUNCATE) disposition = CREATE_ALWAYS;
 
 	if ((handle = CreateFileA(GetPath().c_str(), access, share, nullptr, disposition, FILE_FLAG_OVERLAPPED | FILE_ATTRIBUTE_NORMAL, nullptr)) == INVALID_FILE_HANDLE)
 	{
@@ -327,7 +327,7 @@ int  FIO::File::Open()
 
 	is_open = true;
 
-	if (GetMode() & FILE_MODE_APPEND)
+	if (GetMode() & MODE_APPEND)
 		Position_Set(POSITION_TYPE_WRITE, GetSize());
 
 	return 1;
@@ -422,7 +422,7 @@ bool FIO::File::Read(void* buffer, size_t size, size_t& number_of_bytes_read)
 
 	return true;
 }
-bool FIO::File::Read(void* buffer, size_t size, FileReadCallback&& callback)
+bool FIO::File::Read(void* buffer, size_t size, ReadCallback&& callback)
 {
 	if (!IsOpen() || IsWriteOnly() || is_closing)
 		return false;
@@ -498,7 +498,7 @@ bool FIO::File::Write(const void* buffer, size_t size, size_t& number_of_bytes_w
 
 	return true;
 }
-bool FIO::File::Write(const void* buffer, size_t size, FileWriteCallback&& callback)
+bool FIO::File::Write(const void* buffer, size_t size, WriteCallback&& callback)
 {
 	if (!IsOpen() || IsReadOnly() || is_closing)
 		return false;
@@ -606,7 +606,7 @@ void     FIO::File::Position_IncrementAsync(int type, size_t value)
 	}
 }
 
-void FIO::File::OnRead(ThreadPoolIOContext& io, size_t number_of_bytes_transferred)
+void FIO::File::OnRead(ThreadPool::IOContext& io, size_t number_of_bytes_transferred)
 {
 	Position_IncrementAsync(POSITION_TYPE_READ, number_of_bytes_transferred);
 
@@ -624,7 +624,7 @@ void FIO::File::OnRead(ThreadPoolIOContext& io, size_t number_of_bytes_transferr
 
 	delete context;
 }
-void FIO::File::OnWrite(ThreadPoolIOContext& io, size_t number_of_bytes_transferred)
+void FIO::File::OnWrite(ThreadPool::IOContext& io, size_t number_of_bytes_transferred)
 {
 	Position_IncrementAsync(POSITION_TYPE_WRITE, number_of_bytes_transferred);
 

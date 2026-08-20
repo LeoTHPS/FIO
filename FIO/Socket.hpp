@@ -20,85 +20,85 @@
 
 namespace FIO
 {
-	enum SOCKET_TYPE
-	{
-		SOCKET_TYPE_RAW     = (SOCK_RAW    << 8) | IPPROTO_RAW,
-		SOCKET_TYPE_TCP     = (SOCK_STREAM << 8) | IPPROTO_TCP,
-		SOCKET_TYPE_UDP     = (SOCK_DGRAM  << 8) | IPPROTO_UDP,
-		SOCKET_TYPE_ICMP    = (SOCK_RAW    << 8) | IPPROTO_ICMP,
-		SOCKET_TYPE_ICMP_V6 = (SOCK_RAW    << 8) | IPPROTO_ICMPV6
-	};
-
-	enum SOCKET_SHUTDOWN
-	{
-		SOCKET_SHUTDOWN_SEND = SD_SEND,
-		SOCKET_SHUTDOWN_RECV = SD_RECEIVE,
-		SOCKET_SHUTDOWN_BOTH = SD_BOTH
-	};
-
-	class Socket;
-
-	typedef std::function<void(Socket& socket, Socket& client)>                                                                                   SocketAcceptCallback;
-	typedef std::function<void(Socket& socket)>                                                                                                   SocketConnectCallback;
-
-	typedef std::function<void(Socket& socket, const void* buffer, size_t size, size_t number_of_bytes_sent)>                                     SocketSendCallback;
-	typedef std::function<void(Socket& socket, const void* buffer, size_t size, size_t number_of_bytes_sent, const IPEndPoint& remote_end_point)> SocketSendToCallback;
-
-	typedef std::function<void(Socket& socket, void* buffer, size_t size, size_t number_of_bytes_received)>                                       SocketReceiveCallback;
-	typedef std::function<void(Socket& socket, void* buffer, size_t size, size_t number_of_bytes_received, const IPEndPoint& remote_end_point)>   SocketReceiveFromCallback;
-
 	class Socket
 	{
+	public:
+		enum TYPE
+		{
+			TYPE_RAW     = (SOCK_RAW    << 8) | IPPROTO_RAW,
+			TYPE_TCP     = (SOCK_STREAM << 8) | IPPROTO_TCP,
+			TYPE_UDP     = (SOCK_DGRAM  << 8) | IPPROTO_UDP,
+			TYPE_ICMP    = (SOCK_RAW    << 8) | IPPROTO_ICMP,
+			TYPE_ICMP_V6 = (SOCK_RAW    << 8) | IPPROTO_ICMPV6
+		};
+
+		enum SHUTDOWN
+		{
+			SHUTDOWN_SEND = SD_SEND,
+			SHUTDOWN_RECV = SD_RECEIVE,
+			SHUTDOWN_BOTH = SD_BOTH
+		};
+
+		typedef std::function<void(Socket& socket, Socket& client)>                                                                                   AcceptCallback;
+		typedef std::function<void(Socket& socket)>                                                                                                   ConnectCallback;
+
+		typedef std::function<void(Socket& socket, const void* buffer, size_t size, size_t number_of_bytes_sent)>                                     SendCallback;
+		typedef std::function<void(Socket& socket, const void* buffer, size_t size, size_t number_of_bytes_sent, const IPEndPoint& remote_end_point)> SendToCallback;
+
+		typedef std::function<void(Socket& socket, void* buffer, size_t size, size_t number_of_bytes_received)>                                       ReceiveCallback;
+		typedef std::function<void(Socket& socket, void* buffer, size_t size, size_t number_of_bytes_received, const IPEndPoint& remote_end_point)>   ReceiveFromCallback;
+
+	private:
 		struct IOContext_Accept
 		{
-			ThreadPoolIOContext  IO;
-			uint8_t              Buffer[(sizeof(sockaddr_storage) + 16) * 2];
-			Socket*              Client;
-			bool                 ClientIsOpen;
-			SocketAcceptCallback Callback;
+			ThreadPool::IOContext IO;
+			uint8_t               Buffer[(sizeof(sockaddr_storage) + 16) * 2];
+			Socket*               Client;
+			bool                  ClientIsOpen;
+			AcceptCallback        Callback;
 #if defined(FIO_WIN32)
-			DWORD                NumBytesReceived;
+			DWORD                 NumBytesReceived;
 #endif
 		};
 		struct IOContext_Connect
 		{
-			ThreadPoolIOContext   IO;
-			SocketConnectCallback Callback;
+			ThreadPool::IOContext IO;
+			ConnectCallback       Callback;
 #if defined(FIO_WIN32)
 			DWORD                 NumBytesSent;
 #endif
 		};
 		struct IOContext_Send
 		{
-			ThreadPoolIOContext IO;
+			ThreadPool::IOContext IO;
 #if defined(FIO_WIN32)
-			WSABUF              Buffer;
+			WSABUF                Buffer;
 #endif
-			SocketSendCallback  Callback;
+			SendCallback          Callback;
 #if defined(FIO_WIN32)
-			DWORD               NumBytesSent;
+			DWORD                 NumBytesSent;
 #endif
 		};
 		struct IOContext_SendTo
 		{
-			ThreadPoolIOContext  IO;
+			ThreadPool::IOContext IO;
 #if defined(FIO_WIN32)
-			WSABUF               Buffer;
+			WSABUF                Buffer;
 #endif
-			SocketSendToCallback Callback;
+			SendToCallback        Callback;
 #if defined(FIO_WIN32)
-			DWORD                NumBytesSent;
+			DWORD                 NumBytesSent;
 #endif
-			IPEndPoint           RemoteEndPoint;
+			IPEndPoint            RemoteEndPoint;
 		};
 		struct IOContext_Receive
 		{
-			ThreadPoolIOContext   IO;
+			ThreadPool::IOContext IO;
 #if defined(FIO_WIN32)
 			DWORD                 Flags;
 			WSABUF                Buffer;
 #endif
-			SocketReceiveCallback Callback;
+			ReceiveCallback       Callback;
 #if defined(FIO_WIN32)
 			DWORD                 NumBytesReceived;
 #endif
@@ -111,40 +111,40 @@ namespace FIO
 				sockaddr_storage Address;
 			};
 
-			ThreadPoolIOContext       IO;
+			ThreadPool::IOContext IO;
 #if defined(FIO_WIN32)
-			DWORD                     Flags;
-			WSABUF                    Buffer;
+			DWORD                 Flags;
+			WSABUF                Buffer;
 #endif
-			SocketReceiveFromCallback Callback;
-			EndPoint                  RemoteEndPoint;
+			ReceiveFromCallback   Callback;
+			EndPoint              RemoteEndPoint;
 #if defined(FIO_WIN32)
-			DWORD                     NumBytesReceived;
+			DWORD                 NumBytesReceived;
 #endif
 		};
 
-		bool                is_open;
-		bool                is_bound;
-		bool                is_closing;
-		bool                is_blocking;
-		bool                is_connected;
-		bool                is_listening;
-		bool                is_associated;
+		bool                  is_open;
+		bool                  is_bound;
+		bool                  is_closing;
+		bool                  is_blocking;
+		bool                  is_connected;
+		bool                  is_listening;
+		bool                  is_associated;
 
-		const int           type;
+		const int             type;
 #if defined(FIO_LINUX)
-		std::atomic<int>    error;
-		int                 handle;
+		std::atomic<int>      error;
+		int                   handle;
 #elif defined(FIO_WIN32)
-		std::atomic<DWORD>  error;
-		SOCKET              handle;
+		std::atomic<DWORD>    error;
+		SOCKET                handle;
 #endif
-		const int           address_family;
-		IPEndPoint          ip_end_point_local;
-		IPEndPoint          ip_end_point_remote;
+		const int             address_family;
+		IPEndPoint            ip_end_point_local;
+		IPEndPoint            ip_end_point_remote;
 
-		ThreadPool*         thread_pool;
-		ThreadPoolIOManager thread_pool_io;
+		ThreadPool*           thread_pool;
+		ThreadPool::IOManager thread_pool_io;
 
 		Socket(Socket&&) = delete;
 		Socket(const Socket&) = delete;
@@ -231,7 +231,7 @@ namespace FIO
 		int  Accept(Socket& socket);
 		// @return 0 on error
 		// @return -1 on would block
-		int  Accept(Socket& socket, SocketAcceptCallback&& callback);
+		int  Accept(Socket& socket, AcceptCallback&& callback);
 
 		bool Listen();
 		bool Listen(uint32_t backlog);
@@ -239,7 +239,7 @@ namespace FIO
 		bool Connect(const IPEndPoint& remote_ip_end_point);
 		// @return 0 on error
 		// @return -1 on would block
-		int  Connect(const IPEndPoint& remote_ip_end_point, SocketConnectCallback&& callback);
+		int  Connect(const IPEndPoint& remote_ip_end_point, ConnectCallback&& callback);
 
 		bool Shutdown(int type);
 
@@ -248,29 +248,29 @@ namespace FIO
 		bool Send(const void* buffer, size_t size, size_t& number_of_bytes_sent);
 		// @return 0 on error
 		// @return -1 on would block
-		int  Send(const void* buffer, size_t size, SocketSendCallback&& callback);
+		int  Send(const void* buffer, size_t size, SendCallback&& callback);
 
 		bool SendTo(const void* buffer, size_t size, const IPEndPoint& remote_ip_end_point, size_t& number_of_bytes_sent);
 		// @return 0 on error
 		// @return -1 on would block
-		int  SendTo(const void* buffer, size_t size, const IPEndPoint& remote_ip_end_point, SocketSendToCallback&& callback);
+		int  SendTo(const void* buffer, size_t size, const IPEndPoint& remote_ip_end_point, SendToCallback&& callback);
 
 		bool Receive(void* buffer, size_t size, size_t& number_of_bytes_received);
 		// @return 0 on error
 		// @return -1 on would block
-		int  Receive(void* buffer, size_t size, SocketReceiveCallback&& callback);
+		int  Receive(void* buffer, size_t size, ReceiveCallback&& callback);
 
 		bool ReceiveFrom(void* buffer, size_t size, IPEndPoint& remote_ip_end_point, size_t& number_of_bytes_received);
 		// @return 0 on error
 		// @return -1 on would block
-		int  ReceiveFrom(void* buffer, size_t size, SocketReceiveFromCallback&& callback);
+		int  ReceiveFrom(void* buffer, size_t size, ReceiveFromCallback&& callback);
 
 	private:
-		void OnAccept(ThreadPoolIOContext& io, size_t number_of_bytes_transferred);
-		void OnConnect(ThreadPoolIOContext& io, size_t number_of_bytes_transferred);
-		void OnSend(ThreadPoolIOContext& io, size_t number_of_bytes_transferred);
-		void OnSendTo(ThreadPoolIOContext& io, size_t number_of_bytes_transferred);
-		void OnReceive(ThreadPoolIOContext& io, size_t number_of_bytes_transferred);
-		void OnReceiveFrom(ThreadPoolIOContext& io, size_t number_of_bytes_transferred);
+		void OnAccept(ThreadPool::IOContext& io, size_t number_of_bytes_transferred);
+		void OnConnect(ThreadPool::IOContext& io, size_t number_of_bytes_transferred);
+		void OnSend(ThreadPool::IOContext& io, size_t number_of_bytes_transferred);
+		void OnSendTo(ThreadPool::IOContext& io, size_t number_of_bytes_transferred);
+		void OnReceive(ThreadPool::IOContext& io, size_t number_of_bytes_transferred);
+		void OnReceiveFrom(ThreadPool::IOContext& io, size_t number_of_bytes_transferred);
 	};
 }

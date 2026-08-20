@@ -124,7 +124,7 @@ void fio_ip_end_point_to_string_ipv6(const FIO::IPEndPoint& ip_end_point, std::s
 void fio_ip_end_point_to_storage_ipv4(const FIO::IPEndPoint& ip_end_point, sockaddr_storage& storage, socklen_t& size)
 {
 	size                                      = sizeof(sockaddr_in);
-	((sockaddr_in*)&storage)->sin_port        = FIO::NetworkToHost(ip_end_point.Port);
+	((sockaddr_in*)&storage)->sin_port        = FIO::Endian::NetworkToHost(ip_end_point.Port);
 	((sockaddr_in*)&storage)->sin_addr.s_addr = ip_end_point.Host.IPv4.DWord;
 	((sockaddr_in*)&storage)->sin_family      = AF_INET;
 	memset(((sockaddr_in*)&storage)->sin_zero, 0, sizeof(((sockaddr_in*)&storage)->sin_zero));
@@ -132,7 +132,7 @@ void fio_ip_end_point_to_storage_ipv4(const FIO::IPEndPoint& ip_end_point, socka
 void fio_ip_end_point_to_storage_ipv6(const FIO::IPEndPoint& ip_end_point, sockaddr_storage& storage, socklen_t& size)
 {
 	size                                     = sizeof(sockaddr_in6);
-	((sockaddr_in6*)&storage)->sin6_port     = FIO::HostToNetwork(ip_end_point.Port);
+	((sockaddr_in6*)&storage)->sin6_port     = FIO::Endian::HostToNetwork(ip_end_point.Port);
 	((sockaddr_in6*)&storage)->sin6_family   = AF_INET6;
 	((sockaddr_in6*)&storage)->sin6_scope_id = 0;
 	((sockaddr_in6*)&storage)->sin6_flowinfo = 0;
@@ -144,7 +144,7 @@ bool fio_ip_end_point_from_address_ipv4(FIO::IPEndPoint& ip_end_point, const soc
 	{
 		ip_end_point.Host.Family     = FIO::ADDRESS_FAMILY_IP_V4;
 		ip_end_point.Host.IPv4.DWord = ((const sockaddr_in*)&address)->sin_addr.s_addr;
-		ip_end_point.Port            = FIO::NetworkToHost(((const sockaddr_in*)&address)->sin_port);
+		ip_end_point.Port            = FIO::Endian::NetworkToHost(((const sockaddr_in*)&address)->sin_port);
 
 		return true;
 	}
@@ -156,7 +156,7 @@ bool fio_ip_end_point_from_address_ipv6(FIO::IPEndPoint& ip_end_point, const soc
 	if (size == sizeof(sockaddr_in6))
 	{
 		ip_end_point.Host.Family = FIO::ADDRESS_FAMILY_IP_V6;
-		ip_end_point.Port        = FIO::NetworkToHost(((const sockaddr_in6*)&address)->sin6_port);
+		ip_end_point.Port        = FIO::Endian::NetworkToHost(((const sockaddr_in6*)&address)->sin6_port);
 		memcpy(ip_end_point.Host.IPv6.Byte, ((const sockaddr_in6*)&address)->sin6_addr.s6_addr, 16);
 
 		return true;

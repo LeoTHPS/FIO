@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 #include <cstdint>
-#include <concepts>
+#include <type_traits>
 
 #include "Endian.hpp"
 
@@ -82,7 +82,7 @@ namespace FIO
 			if (!Peek(&value, sizeof(T)))
 				return false;
 
-			if (GetEndian() != ENDIAN_MACHINE)
+			if (GetEndian() != Endian::MACHINE)
 				value = Flip(value);
 
 			return true;
@@ -98,8 +98,8 @@ namespace FIO
 			if (!Read(&value, sizeof(T)))
 				return false;
 
-			if (GetEndian() != ENDIAN_MACHINE)
-				value = Flip(value);
+			if (GetEndian() != Endian::MACHINE)
+				value = Endian::Flip(value);
 
 			return true;
 		}
@@ -111,8 +111,8 @@ namespace FIO
 		requires(is_enum_or_numeric_v<T>)
 		bool Write(T value)
 		{
-			if (GetEndian() != ENDIAN_MACHINE)
-				value = Flip(value);
+			if (GetEndian() != Endian::MACHINE)
+				value = Endian::Flip(value);
 
 			return Write(&value, sizeof(T));
 		}

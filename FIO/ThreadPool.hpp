@@ -4,7 +4,6 @@
 #include <atomic>
 #include <vector>
 #include <cstdint>
-#include <concepts>
 #include <functional>
 
 #if defined(FIO_LINUX)
@@ -16,58 +15,59 @@
 namespace FIO
 {
 	class Thread;
-	class ThreadPool;
-
-	struct ThreadPoolIOContext;
-
-	typedef std::function<void()>                                                                 ThreadPoolFunction;
-	typedef std::function<void(ThreadPoolIOContext& context, size_t number_of_bytes_transferred)> ThreadPoolIOCallback;
-
-	struct ThreadPoolIOContext
-	{
-#if defined(FIO_WIN32)
-		OVERLAPPED           O;
-#endif
-		ThreadPoolIOCallback Callback;
-	};
-
-	class ThreadPoolIOManager
-	{
-		std::list<ThreadPoolIOContext*> list;
-		std::atomic_flag                list_busy;
-		std::atomic_flag                list_empty;
-
-		ThreadPoolIOManager(ThreadPoolIOManager&&) = delete;
-		ThreadPoolIOManager(const ThreadPoolIOManager&) = delete;
-
-	public:
-		typedef ThreadPoolIOContext  Context;
-		typedef ThreadPoolIOCallback Callback;
-
-		ThreadPoolIOManager();
-
-		virtual ~ThreadPoolIOManager();
-
-		void Add(Context& value);
-		void Remove(Context& value);
-
-		void Wait() const;
-
-	private:
-		inline void Lock()
-		{
-			while (list_busy.test_and_set(std::memory_order_acquire))
-				while (list_busy.test(std::memory_order_relaxed))
-					;
-		}
-		inline void Unlock()
-		{
-			list_busy.clear(std::memory_order_release);
-		}
-	};
 
 	class ThreadPool
 	{
+	public:
+		struct IOContext;
+
+		typedef std::function<void()>                                                       Function;
+		typedef std::function<void(IOContext& context, size_t number_of_bytes_transferred)> IOCallback;
+
+		struct IOContext
+		{
+#if defined(FIO_WIN32)
+			OVERLAPPED           O;
+#endif
+			IOCallback Callback;
+		};
+
+		class  IOManager
+		{
+			std::list<IOContext*> list;
+			std::atomic_flag                list_busy;
+			std::atomic_flag                list_empty;
+
+			IOManager(IOManager&&) = delete;
+			IOManager(const IOManager&) = delete;
+
+		public:
+			typedef IOContext  Context;
+			typedef IOCallback Callback;
+
+			IOManager();
+
+			virtual ~IOManager();
+
+			void Add(Context& value);
+			void Remove(Context& value);
+
+			void Wait() const;
+
+		private:
+			inline void Lock()
+			{
+				while (list_busy.test_and_set(std::memory_order_acquire))
+					while (list_busy.test(std::memory_order_relaxed))
+						;
+			}
+			inline void Unlock()
+			{
+				list_busy.clear(std::memory_order_release);
+			}
+		};
+
+	private:
 #if defined(FIO_WIN32)
 		enum IOCP_REQUEST_KEY : UINT_PTR
 		{
@@ -92,11 +92,6 @@ namespace FIO
 		ThreadPool(const ThreadPool&) = delete;
 
 	public:
-		typedef ThreadPoolFunction   Function;
-		typedef ThreadPoolIOContext  IOContext;
-		typedef ThreadPoolIOManager  IOManager;
-		typedef ThreadPoolIOCallback IOCallback;
-
 		explicit ThreadPool(size_t size);
 
 		virtual ~ThreadPool();

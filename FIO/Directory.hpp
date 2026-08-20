@@ -4,12 +4,6 @@
 
 namespace FIO
 {
-	enum DIRECTORY_ENTRY_TYPE
-	{
-		DIRECTORY_ENTRY_TYPE_FILE,
-		DIRECTORY_ENTRY_TYPE_DIRECTORY
-	};
-
 	// @return false to stop enumeration
 	typedef std::function<bool(std::string_view path, int type)> DirectoryEnumCallback;
 
@@ -18,6 +12,12 @@ namespace FIO
 		Directory() = delete;
 
 	public:
+		enum ENTRY_TYPE
+		{
+			ENTRY_TYPE_FILE,
+			ENTRY_TYPE_DIRECTORY
+		};
+
 		// @return 0 on error
 		// @return -1 on not found
 		// @return -2 on already exists
@@ -34,5 +34,6 @@ namespace FIO
 		static bool Enumerate(std::string_view path, const DirectoryEnumCallback& callback);
 
 		static bool GetCurrentPath(std::string& value);
+		static bool SetCurrentPath(std::string_view value);
 	};
 }
