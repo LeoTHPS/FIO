@@ -1,5 +1,5 @@
-#include "IP.hpp"
 #include "Endian.hpp"
+#include "IPAddress.hpp"
 
 #if defined(FIO_LINUX)
 	#include <arpa/inet.h>
@@ -62,7 +62,7 @@ int  fio_ip_address_from_string_ipv4(FIO::IPAddress& ip_address, std::string_vie
 		case -1: return -1;
 	}
 
-	ip_address.Family = FIO::ADDRESS_FAMILY_IP_V4;
+	ip_address.Family = FIO::IPAddress::FAMILY_V4;
 
 	return 1;
 }
@@ -74,7 +74,7 @@ int  fio_ip_address_from_string_ipv6(FIO::IPAddress& ip_address, std::string_vie
 		case -1: return -1;
 	}
 
-	ip_address.Family = FIO::ADDRESS_FAMILY_IP_V6;
+	ip_address.Family = FIO::IPAddress::FAMILY_V6;
 
 	return 1;
 }
@@ -82,7 +82,7 @@ bool fio_ip_address_from_address_ipv4(FIO::IPAddress& ip_address, const sockaddr
 {
 	if (size == sizeof(sockaddr_in))
 	{
-		ip_address.Family     = FIO::ADDRESS_FAMILY_IP_V4;
+		ip_address.Family     = FIO::IPAddress::FAMILY_V4;
 		ip_address.IPv4.DWord = ((const sockaddr_in*)&address)->sin_addr.s_addr;
 
 		return true;
@@ -94,7 +94,7 @@ bool fio_ip_address_from_address_ipv6(FIO::IPAddress& ip_address, const sockaddr
 {
 	if (size == sizeof(sockaddr_in6))
 	{
-		ip_address.Family = FIO::ADDRESS_FAMILY_IP_V6;
+		ip_address.Family = FIO::IPAddress::FAMILY_V6;
 		memcpy(ip_address.IPv6.Byte, ((const sockaddr_in6*)&address)->sin6_addr.s6_addr, 16);
 
 		return true;
@@ -142,7 +142,7 @@ bool fio_ip_end_point_from_address_ipv4(FIO::IPEndPoint& ip_end_point, const soc
 {
 	if (size == sizeof(sockaddr_in))
 	{
-		ip_end_point.Host.Family     = FIO::ADDRESS_FAMILY_IP_V4;
+		ip_end_point.Host.Family     = FIO::IPAddress::FAMILY_V4;
 		ip_end_point.Host.IPv4.DWord = ((const sockaddr_in*)&address)->sin_addr.s_addr;
 		ip_end_point.Port            = FIO::Endian::NetworkToHost(((const sockaddr_in*)&address)->sin_port);
 
@@ -155,7 +155,7 @@ bool fio_ip_end_point_from_address_ipv6(FIO::IPEndPoint& ip_end_point, const soc
 {
 	if (size == sizeof(sockaddr_in6))
 	{
-		ip_end_point.Host.Family = FIO::ADDRESS_FAMILY_IP_V6;
+		ip_end_point.Host.Family = FIO::IPAddress::FAMILY_V6;
 		ip_end_point.Port        = FIO::Endian::NetworkToHost(((const sockaddr_in6*)&address)->sin6_port);
 		memcpy(ip_end_point.Host.IPv6.Byte, ((const sockaddr_in6*)&address)->sin6_addr.s6_addr, 16);
 
@@ -179,17 +179,17 @@ constexpr fio_address_family FIO_ADDRESS_FAMILY[] =
 		&fio_ip_end_point_from_address_##f \
 	}
 
-	DEFINE_FIO_ADDRESS_FAMILY(FIO::ADDRESS_FAMILY_IP_V4, ipv4),
-	DEFINE_FIO_ADDRESS_FAMILY(FIO::ADDRESS_FAMILY_IP_V6, ipv6)
+	DEFINE_FIO_ADDRESS_FAMILY(FIO::IPAddress::FAMILY_V4, ipv4),
+	DEFINE_FIO_ADDRESS_FAMILY(FIO::IPAddress::FAMILY_V6, ipv6)
 };
 
-static_assert(sizeof(FIO::IPAddress4) == sizeof(in_addr));
-static_assert(sizeof(FIO::IPAddress6) == sizeof(in6_addr));
+static_assert(sizeof(FIO::IPAddress::V4) == sizeof(in_addr));
+static_assert(sizeof(FIO::IPAddress::V6) == sizeof(in6_addr));
 
-FIO::IPAddress FIO::IPAddress::Any       = { .Family = FIO::ADDRESS_FAMILY_IP_V4, .IPv4 = { .Byte = { (uint8_t)0, 0, 0, 0 } } };
-FIO::IPAddress FIO::IPAddress::Any6      = { .Family = FIO::ADDRESS_FAMILY_IP_V6, .IPv6 = { .Byte = { (uint8_t)0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } } };
-FIO::IPAddress FIO::IPAddress::Loopback  = { .Family = FIO::ADDRESS_FAMILY_IP_V4, .IPv4 = { .Byte = { (uint8_t)127, 0, 0, 1 } } };
-FIO::IPAddress FIO::IPAddress::Loopback6 = { .Family = FIO::ADDRESS_FAMILY_IP_V6, .IPv6 = { .Byte = { (uint8_t)0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 } } };
+FIO::IPAddress FIO::IPAddress::Any       = { .Family = FIO::IPAddress::FAMILY_V4, .IPv4 = { .Byte = { (uint8_t)0, 0, 0, 0 } } };
+FIO::IPAddress FIO::IPAddress::Any6      = { .Family = FIO::IPAddress::FAMILY_V6, .IPv6 = { .Byte = { (uint8_t)0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } } };
+FIO::IPAddress FIO::IPAddress::Loopback  = { .Family = FIO::IPAddress::FAMILY_V4, .IPv4 = { .Byte = { (uint8_t)127, 0, 0, 1 } } };
+FIO::IPAddress FIO::IPAddress::Loopback6 = { .Family = FIO::IPAddress::FAMILY_V6, .IPv6 = { .Byte = { (uint8_t)0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 } } };
 bool           FIO::IPAddress::FromString(IPAddress& ip_address, std::string_view string)
 {
 	for (auto& af : FIO_ADDRESS_FAMILY)

@@ -347,8 +347,8 @@ public:
 
 int main(int argc, char* argv[])
 {
-	// demo_dns("www.google.com", FIO::ADDRESS_FAMILY_IP_V4).run();
-	// demo_dns("www.google.com", FIO::ADDRESS_FAMILY_IP_V6).run();
+	// demo_dns("www.google.com", FIO::IPAddress::FAMILY_V4).run();
+	// demo_dns("www.google.com", FIO::IPAddress::FAMILY_V6).run();
 
 	// demo_file_in("./demo.bin", THREAD_COUNT).run();
 	// demo_file_out("./demo.bin", THREAD_COUNT).run();

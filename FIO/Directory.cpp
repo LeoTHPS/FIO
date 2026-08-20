@@ -77,7 +77,7 @@ bool FIO::Directory::Contains(std::string_view path, std::string_view value)
 	return Path::Exists(Path::Combine(path, value));
 }
 
-bool FIO::Directory::Enumerate(std::string_view path, const DirectoryEnumCallback& callback)
+bool FIO::Directory::Enumerate(std::string_view path, const EnumCallback& callback)
 {
 #if defined(FIO_LINUX)
 	DIR*      dir;

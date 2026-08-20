@@ -15,7 +15,7 @@
 #include <list>
 #include <functional>
 
-#include "IP.hpp"
+#include "IPAddress.hpp"
 #include "ThreadPool.hpp"
 
 namespace FIO

@@ -14,33 +14,33 @@
 
 namespace FIO
 {
-	enum ADDRESS_FAMILY
-	{
-		ADDRESS_FAMILY_IP_V4 = AF_INET,
-		ADDRESS_FAMILY_IP_V6 = AF_INET6
-	};
-
-#pragma pack(push, 1)
-	union IPAddress4
-	{
-		uint8_t  Byte[4];
-		uint16_t Word[2];
-		uint32_t DWord;
-	};
-	union IPAddress6
-	{
-		uint8_t     Byte[16];
-		uint16_t    Word[8];
-		uint32_t    DWord[4];
-		uint64_t    QWord[2];
-#ifdef __SIZEOF_INT128__
-		__uint128_t OWord;
-#endif
-	};
-#pragma pack(pop)
-
 	struct IPAddress
 	{
+		enum FAMILY
+		{
+			FAMILY_V4 = AF_INET,
+			FAMILY_V6 = AF_INET6
+		};
+
+#pragma pack(push, 1)
+		union V4
+		{
+			uint8_t  Byte[4];
+			uint16_t Word[2];
+			uint32_t DWord;
+		};
+		union V6
+		{
+			uint8_t     Byte[16];
+			uint16_t    Word[8];
+			uint32_t    DWord[4];
+			uint64_t    QWord[2];
+#ifdef __SIZEOF_INT128__
+			__uint128_t OWord;
+#endif
+		};
+#pragma pack(pop)
+
 		static IPAddress Any;
 		static IPAddress Any6;
 
@@ -52,12 +52,12 @@ namespace FIO
 
 		static bool FromAddress(IPAddress& ip_address, const sockaddr& address, socklen_t size);
 
-		int            Family;
+		int    Family;
 
 		union
 		{
-			IPAddress4 IPv4;
-			IPAddress6 IPv6;
+			V4 IPv4;
+			V6 IPv6;
 		};
 
 		std::string ToString() const;

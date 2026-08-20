@@ -4,14 +4,14 @@
 
 namespace FIO
 {
-	// @return false to stop enumeration
-	typedef std::function<bool(std::string_view path, int type)> DirectoryEnumCallback;
-
 	class Directory
 	{
 		Directory() = delete;
 
 	public:
+		// @return false to stop enumeration
+		typedef std::function<bool(std::string_view path, int type)> EnumCallback;
+
 		enum ENTRY_TYPE
 		{
 			ENTRY_TYPE_FILE,
@@ -31,7 +31,7 @@ namespace FIO
 
 		static bool Contains(std::string_view path, std::string_view value);
 
-		static bool Enumerate(std::string_view path, const DirectoryEnumCallback& callback);
+		static bool Enumerate(std::string_view path, const EnumCallback& callback);
 
 		static bool GetCurrentPath(std::string& value);
 		static bool SetCurrentPath(std::string_view value);

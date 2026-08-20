@@ -1,8 +1,8 @@
 #pragma once
-#include "IP.hpp"
-
 #include <functional>
 #include <string_view>
+
+#include "IPAddress.hpp"
 
 namespace FIO
 {
