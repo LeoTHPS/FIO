@@ -13,18 +13,19 @@
 #include <FIO/ByteBuffer.hpp>
 #include <FIO/ThreadPool.hpp>
 
+std::atomic_flag print_busy;
+const FIO::Timer print_timer;
+
 template<typename ... T>
 void print(std::string_view format, T ... args)
 {
 	std::ostream_iterator<char> it(std::cout);
-	static std::atomic_flag     busy;
-	static FIO::Timer           timer;
 
-	while (busy.test_and_set(std::memory_order_acquire))
-		while (busy.test(std::memory_order_relaxed))
+	while (print_busy.test_and_set(std::memory_order_acquire))
+		while (print_busy.test(std::memory_order_relaxed))
 			;
 
-	std::format_to(it, "[{:.6f}] ", timer.GetElapsed().ToMicroseconds() / 1000000.0f);
+	std::format_to(it, "[{:.6f}] ", print_timer.GetElapsed().ToMicroseconds() / 1000000.0f);
 #if defined(FIO_LINUX)
 	std::cout << '[' << gettid() << "] ";
 #elif defined(FIO_WIN32)
@@ -37,7 +38,31 @@ void print(std::string_view format, T ... args)
 
 	std::cout << std::endl;
 
-	busy.clear(std::memory_order_release);
+	print_busy.clear(std::memory_order_release);
+}
+template<typename ... T>
+void print(std::wstring_view format, T ... args)
+{
+	std::ostreambuf_iterator<wchar_t> it(std::wcout);
+
+	while (print_busy.test_and_set(std::memory_order_acquire))
+		while (print_busy.test(std::memory_order_relaxed))
+			;
+
+	std::format_to(it, L"[{:.6f}] ", print_timer.GetElapsed().ToMicroseconds() / 1000000.0f);
+#if defined(FIO_LINUX)
+	std::wcout << L'[' << gettid() << L"] ";
+#elif defined(FIO_WIN32)
+	std::wcout << L'[' << GetCurrentThreadId() << L"] ";
+#endif
+	if constexpr (sizeof...(T) == 0)
+		std::wcout << format;
+	else
+		std::vformat_to(it, format, std::make_wformat_args(args ...));
+
+	std::wcout << std::endl;
+
+	print_busy.clear(std::memory_order_release);
 }
 
 class demo_dns
@@ -298,16 +323,16 @@ public:
 	void run()
 	{
 		std::string str("Hello world");
-		print("buffer.Write() -> {}", buffer.Write(str));
-		print("buffer.Read() -> {}", buffer.Read(str));
+		print("buffer.Write(\"{}\") -> {}", str, buffer.Write(str));
+		print("buffer.Read(\"{}\") -> {}", str, buffer.Read(str));
 
 		std::wstring wstr(L"Hello world");
-		print("buffer.Write() -> {}", buffer.Write(wstr));
-		print("buffer.Read() -> {}", buffer.Read(wstr));
+		print(L"buffer.Write(\"{}\") -> {}", wstr, buffer.Write(wstr));
+		print(L"buffer.Read(\"{}\") -> {}", wstr, buffer.Read(wstr));
 
 		uint32_t uint = 0x12345678;
-		print("buffer.Write() -> {}", buffer.Write(uint));
-		print("buffer.Read() -> {}", buffer.Read(uint));
+		print("buffer.Write({}) -> {}", uint, buffer.Write(uint));
+		print("buffer.Read({}) -> {}", uint, buffer.Read(uint));
 	}
 };
 
