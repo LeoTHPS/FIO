@@ -1,5 +1,6 @@
 #include "ByteBuffer.hpp"
 
+#include <climits>
 #include <cstring>
 
 FIO::ByteBuffer FIO::ByteBuffer::Copy(const void* buffer, size_t size, int endian)
@@ -87,6 +88,38 @@ FIO::ByteBuffer::~ByteBuffer()
 {
 }
 
+uint32_t FIO::ByteBuffer::GetNextBlockSize() const
+{
+	auto offset   = GetReadPosition();
+	auto capacity = GetCapacity();
+
+	if (!buffer_read || ((offset + sizeof(uint8_t)) > capacity))
+		return 0;
+
+	uint8_t  chunk;
+	uint32_t value = 0;
+
+	for (size_t i = 0; i < 32; i += 7)
+	{
+		if (!(chunk = buffer_read[offset]))
+			break;
+
+		value <<= 7;
+		value  |= chunk & 0x7F;
+
+		if (!(chunk & 0x80))
+			break;
+
+		if (++offset == capacity)
+			return 0;
+	}
+
+	if (GetEndian() != Endian::MACHINE)
+		value = Endian::Flip(value);
+
+	return value;
+}
+
 void FIO::ByteBuffer::SetEndian(int value)
 {
 	buffer_endian = value;
@@ -124,31 +157,23 @@ void FIO::ByteBuffer::SetWritePosition(size_t value)
 
 bool FIO::ByteBuffer::Peek(std::string& value) const
 {
-	auto offset   = GetReadPosition();
-	auto capacity = GetCapacity();
+	if (auto size = GetNextBlockSize())
+	{
+		value.resize(size / sizeof(char));
 
-	for (size_t i = 0, j = offset; j < capacity; ++i, j += sizeof(char))
-		if (!*((const char*)&buffer_read[j]))
-		{
-			value.assign((const char*)&buffer_read[offset], i);
-
-			return true;
-		}
+		return PeekBlock(value.data(), size);
+	}
 
 	return false;
 }
 bool FIO::ByteBuffer::Peek(std::wstring& value) const
 {
-	auto offset   = GetReadPosition();
-	auto capacity = GetCapacity();
+	if (auto size = GetNextBlockSize())
+	{
+		value.resize(size / sizeof(wchar_t));
 
-	for (size_t i = 0, j = offset; j < capacity; ++i, j += sizeof(wchar_t))
-		if (!*((const wchar_t*)&buffer_read[j]))
-		{
-			value.assign((const wchar_t*)&buffer_read[offset], i);
-
-			return true;
-		}
+		return PeekBlock(value.data(), size);
+	}
 
 	return false;
 }
@@ -166,46 +191,23 @@ bool FIO::ByteBuffer::Peek(void* buffer, size_t size) const
 
 bool FIO::ByteBuffer::Read(std::string& value)
 {
-	auto offset   = GetReadPosition();
-	auto capacity = GetCapacity();
+	if (auto size = GetNextBlockSize())
+	{
+		value.resize(size / sizeof(char));
 
-	for (size_t i = 0, j = offset; j < capacity; ++i, j += sizeof(char))
-		if (!*((const char*)&buffer_read[j]))
-		{
-			value.assign((const char*)&buffer_read[offset], i);
-
-			buffer_read_position += (i * sizeof(char)) + sizeof(char);
-
-			return true;
-		}
+		return ReadBlock(value.data(), size);
+	}
 
 	return false;
 }
 bool FIO::ByteBuffer::Read(std::wstring& value)
 {
-	auto offset   = GetReadPosition();
-	auto capacity = GetCapacity();
+	if (auto size = GetNextBlockSize())
+	{
+		value.resize(size / sizeof(wchar_t));
 
-	for (size_t i = 0, j = offset; j < capacity; ++i, j += sizeof(wchar_t))
-		if (!*((const wchar_t*)&buffer_read[j]))
-		{
-			if (GetEndian() == Endian::MACHINE)
-				value.assign((const wchar_t*)&buffer_read[offset], i);
-			else
-			{
-				value.resize(i);
-
-				auto src  = (const wchar_t*)&buffer_read[offset];
-				auto dest = value.data();
-
-				for (size_t j = 0; j < i; ++j, ++src, ++dest)
-					*dest = Endian::Flip(*src);
-			}
-
-			buffer_read_position += (i * sizeof(wchar_t)) + sizeof(wchar_t);
-
-			return true;
-		}
+		return ReadBlock(value.data(), size);
+	}
 
 	return false;
 }
@@ -225,43 +227,15 @@ bool FIO::ByteBuffer::Read(void* buffer, size_t size)
 
 bool FIO::ByteBuffer::Write(std::string_view value)
 {
-	auto size   = value.length() * sizeof(char);
-	auto offset = GetWritePosition();
+	auto size = value.length() * sizeof(char);
 
-	if (!buffer_write || ((offset + size + sizeof(char)) > GetCapacity()))
-		return false;
-
-	memcpy(buffer_write + offset, value.data(), size);
-	*((char*)&buffer_write[offset + size]) = 0;
-
-	buffer_write_position += size + sizeof(char);
-
-	return true;
+	return (size <= UINT32_MAX) && WriteBlock(value.data(), (uint32_t)size);
 }
 bool FIO::ByteBuffer::Write(std::wstring_view value)
 {
-	auto size   = value.length() * sizeof(wchar_t);
-	auto offset = GetWritePosition();
+	auto size = value.length() * sizeof(wchar_t);
 
-	if (!buffer_write || ((offset + size + sizeof(wchar_t)) > GetCapacity()))
-		return false;
-
-	if (GetEndian() == Endian::MACHINE)
-		memcpy(buffer_write + offset, value.data(), size);
-	else
-	{
-		auto src  = value.data();
-		auto dest = (wchar_t*)&buffer_write[offset];
-
-		for (size_t i = 0; i < value.length(); ++i, ++src, ++dest)
-			*dest = Endian::Flip(*src);
-	}
-
-	*((wchar_t*)&buffer_write[offset + size]) = 0;
-
-	buffer_write_position += size + sizeof(wchar_t);
-
-	return true;
+	return (size <= UINT32_MAX) && WriteBlock(value.data(), (uint32_t)size);
 }
 bool FIO::ByteBuffer::Write(const void* buffer, size_t size)
 {
@@ -273,6 +247,65 @@ bool FIO::ByteBuffer::Write(const void* buffer, size_t size)
 	memcpy(buffer_write + offset, buffer, size);
 
 	buffer_write_position += size;
+
+	return true;
+}
+
+bool FIO::ByteBuffer::PeekBlock(void* buffer, uint32_t size) const
+{
+	auto offset            = GetReadPosition();
+	auto block_size        = GetNextBlockSize();
+	auto block_size_chunks = (block_size / 0x7F) + ((block_size % 0x7F) ? 1 : 0);
+
+	if (!buffer_read || ((offset + block_size_chunks + block_size) > GetCapacity()) || (size < block_size))
+		return false;
+
+	memcpy(buffer, buffer_read + offset + block_size_chunks, block_size);
+
+	return true;
+}
+
+bool FIO::ByteBuffer::ReadBlock(void* buffer, uint32_t size)
+{
+	auto offset            = GetReadPosition();
+	auto block_size        = GetNextBlockSize();
+	auto block_size_chunks = (block_size / 0x7F) + ((block_size % 0x7F) ? 1 : 0);
+
+	if (!buffer_read || ((offset + block_size_chunks + block_size) > GetCapacity()) || (size < block_size))
+		return false;
+
+	memcpy(buffer, buffer_read + offset + block_size_chunks, block_size);
+
+	buffer_read_position += block_size_chunks + block_size;
+
+	return true;
+}
+
+bool FIO::ByteBuffer::WriteBlock(const void* buffer, uint32_t size)
+{
+	auto offset            = GetWritePosition();
+	auto block_size        = size;
+	auto block_size_chunks = (size / 0x7F) + ((size % 0x7F) ? 1 : 0);
+
+	if (GetEndian() != Endian::MACHINE)
+		size = Endian::Flip(size);
+
+	if (!buffer_write || ((offset + block_size_chunks + block_size) > GetCapacity()))
+		return 0;
+
+	for (size_t i = 0, j = 1; i < block_size_chunks; ++i, ++j, size >>= 7)
+	{
+		uint8_t chunk = size & 0x7F;
+
+		if (j < block_size_chunks)
+			chunk |= 0x80;
+
+		buffer_write[offset + i] = chunk;
+	}
+
+	memcpy(buffer_write + offset + block_size_chunks, buffer, block_size);
+
+	buffer_write_position += block_size_chunks + block_size;
 
 	return true;
 }

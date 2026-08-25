@@ -67,6 +67,8 @@ namespace FIO
 			return buffer_write_position;
 		}
 
+		uint32_t       GetNextBlockSize() const;
+
 		void SetEndian(int value);
 
 		void SetCapacity(size_t value);
@@ -83,7 +85,7 @@ namespace FIO
 				return false;
 
 			if (GetEndian() != Endian::MACHINE)
-				value = Flip(value);
+				value = Endian::Flip(value);
 
 			return true;
 		}
@@ -119,6 +121,12 @@ namespace FIO
 		bool Write(std::string_view value);
 		bool Write(std::wstring_view value);
 		bool Write(const void* buffer, size_t size);
+
+		bool PeekBlock(void* buffer, uint32_t size) const;
+
+		bool ReadBlock(void* buffer, uint32_t size);
+
+		bool WriteBlock(const void* buffer, uint32_t size);
 
 		ByteBuffer& operator = (ByteBuffer&& buffer);
 		ByteBuffer& operator = (const ByteBuffer& buffer);
