@@ -71,6 +71,28 @@ int  FIO::File::Copy(std::string_view source, std::string_view destination)
 
 	return 1;
 }
+#ifdef FIO_WIN32
+int  FIO::File::Copy(std::wstring_view source, std::wstring_view destination)
+{
+	if (!CopyFileW(source.data(), destination.data(), TRUE))
+	{
+		switch (::GetLastError())
+		{
+			case ERROR_FILE_NOT_FOUND:
+			case ERROR_PATH_NOT_FOUND:
+				return -1;
+
+			case ERROR_FILE_EXISTS:
+			case ERROR_ALREADY_EXISTS:
+				return -2;
+		}
+
+		return 0;
+	}
+
+	return 1;
+}
+#endif
 
 int  FIO::File::Move(std::string_view source, std::string_view destination)
 {
@@ -124,6 +146,28 @@ int  FIO::File::Move(std::string_view source, std::string_view destination)
 
 	return 1;
 }
+#ifdef FIO_WIN32
+int  FIO::File::Move(std::wstring_view source, std::wstring_view destination)
+{
+	if (!MoveFileW(source.data(), destination.data()))
+	{
+		switch (::GetLastError())
+		{
+			case ERROR_FILE_NOT_FOUND:
+			case ERROR_PATH_NOT_FOUND:
+				return -1;
+
+			case ERROR_FILE_EXISTS:
+			case ERROR_ALREADY_EXISTS:
+				return -2;
+		}
+
+		return 0;
+	}
+
+	return 1;
+}
+#endif
 
 int  FIO::File::Create(std::string_view path)
 {
@@ -166,6 +210,32 @@ int  FIO::File::Create(std::string_view path)
 
 	return 1;
 }
+#ifdef FIO_WIN32
+int  FIO::File::Create(std::wstring_view path)
+{
+	HANDLE handle;
+
+	if ((handle = CreateFileW(path.data(), GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr)) == INVALID_FILE_HANDLE)
+	{
+		switch (::GetLastError())
+		{
+			case ERROR_FILE_NOT_FOUND:
+			case ERROR_PATH_NOT_FOUND:
+				return -1;
+
+			case ERROR_FILE_EXISTS:
+			case ERROR_ALREADY_EXISTS:
+				return -2;
+		}
+
+		return 0;
+	}
+
+	CloseHandle(handle);
+
+	return 1;
+}
+#endif
 
 int  FIO::File::Delete(std::string_view path)
 {
@@ -193,23 +263,48 @@ int  FIO::File::Delete(std::string_view path)
 
 	return 1;
 }
+#ifdef FIO_WIN32
+int  FIO::File::Delete(std::wstring_view path)
+{
+	if (!DeleteFileW(path.data()))
+	{
+		switch (::GetLastError())
+		{
+			case ERROR_FILE_NOT_FOUND:
+			case ERROR_PATH_NOT_FOUND:
+				return -1;
+		}
+
+		return 0;
+	}
+
+	return 1;
+}
+#endif
 
 bool FIO::File::Exists(std::string_view path)
 {
 	return Path::Exists(path) && Path::IsFile(path);
 }
+#ifdef FIO_WIN32
+bool FIO::File::Exists(std::wstring_view path)
+{
+	return Path::Exists(path) && Path::IsFile(path);
+}
+#endif
 
 FIO::File::File(std::string_view path, int mode)
 	: is_open(false),
 	is_closing(false),
 	is_associated(false),
 	mode(mode),
-	path(path),
 	size(0),
 #if defined(FIO_LINUX)
+	path(path),
 	error(0),
 	handle(INVALID_FILE_HANDLE),
 #elif defined(FIO_WIN32)
+	path(path.begin(), path.end()),
 	error(0),
 	handle(INVALID_FILE_HANDLE),
 #endif
@@ -218,6 +313,22 @@ FIO::File::File(std::string_view path, int mode)
 	thread_pool(nullptr)
 {
 }
+#ifdef FIO_WIN32
+FIO::File::File(std::wstring_view path, int mode)
+	: is_open(false),
+	is_closing(false),
+	is_associated(false),
+	mode(mode),
+	size(0),
+	path(path),
+	error(0),
+	handle(INVALID_FILE_HANDLE),
+	position{ 0 },
+	position_type(POSITION_TYPE_NONE),
+	thread_pool(nullptr)
+{
+}
+#endif
 
 FIO::File::~File()
 {
@@ -294,7 +405,7 @@ int  FIO::File::Open()
 	if (GetMode() & MODE_CREATE)   disposition = OPEN_ALWAYS;
 	if (GetMode() & MODE_TRUNCATE) disposition = CREATE_ALWAYS;
 
-	if ((handle = CreateFileA(GetPath().c_str(), access, share, nullptr, disposition, FILE_FLAG_OVERLAPPED | FILE_ATTRIBUTE_NORMAL, nullptr)) == INVALID_FILE_HANDLE)
+	if ((handle = CreateFileW(GetPath().c_str(), access, share, nullptr, disposition, FILE_FLAG_OVERLAPPED | FILE_ATTRIBUTE_NORMAL, nullptr)) == INVALID_FILE_HANDLE)
 	{
 		switch (error = ::GetLastError())
 		{
@@ -312,7 +423,7 @@ int  FIO::File::Open()
 
 	WIN32_FILE_ATTRIBUTE_DATA file_attr_data;
 
-	if (!GetFileAttributesExA(GetPath().c_str(), GET_FILEEX_INFO_LEVELS::GetFileExInfoStandard, &file_attr_data))
+	if (!GetFileAttributesExW(GetPath().c_str(), GET_FILEEX_INFO_LEVELS::GetFileExInfoStandard, &file_attr_data))
 	{
 		error = ::GetLastError();
 

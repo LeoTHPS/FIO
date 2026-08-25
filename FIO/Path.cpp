@@ -34,6 +34,20 @@ bool FIO::Path::IsFile(std::string_view path)
 
 	return true;
 }
+#ifdef FIO_WIN32
+bool FIO::Path::IsFile(std::wstring_view path)
+{
+	DWORD attributes;
+
+	if ((attributes = GetFileAttributesW(path.data())) == INVALID_FILE_ATTRIBUTES)
+		return false;
+
+	if (attributes & FILE_ATTRIBUTE_DIRECTORY)
+		return false;
+
+	return true;
+}
+#endif
 
 bool FIO::Path::IsDirectory(std::string_view path)
 {
@@ -57,6 +71,20 @@ bool FIO::Path::IsDirectory(std::string_view path)
 
 	return true;
 }
+#ifdef FIO_WIN32
+bool FIO::Path::IsDirectory(std::wstring_view path)
+{
+	DWORD attributes;
+
+	if ((attributes = GetFileAttributesW(path.data())) == INVALID_FILE_ATTRIBUTES)
+		return false;
+
+	if (!(attributes & FILE_ATTRIBUTE_DIRECTORY))
+		return false;
+
+	return true;
+}
+#endif
 
 bool FIO::Path::Exists(std::string_view path)
 {
@@ -70,3 +98,12 @@ bool FIO::Path::Exists(std::string_view path)
 
 	return true;
 }
+#ifdef FIO_WIN32
+bool FIO::Path::Exists(std::wstring_view path)
+{
+	if (!PathFileExistsW(path.data()))
+		return false;
+
+	return true;
+}
+#endif
