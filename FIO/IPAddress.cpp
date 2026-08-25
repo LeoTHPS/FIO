@@ -4,6 +4,8 @@
 #if defined(FIO_LINUX)
 	#include <arpa/inet.h>
 #elif defined(FIO_WIN32)
+	#include "WinSock2.hpp"
+
 	#include <Ws2Tcpip.h>
 #endif
 
@@ -16,6 +18,7 @@ struct fio_address_family
 {
 	int   family;
 
+	bool(*ip_address_compare)(const FIO::IPAddress& ip_address1, const FIO::IPAddress& ip_address2);
 	void(*ip_address_to_string)(const FIO::IPAddress& ip_address, std::string& string);
 	void(*ip_address_to_storage)(const FIO::IPAddress& ip_address, sockaddr_storage& storage, socklen_t& size);
 	int(* ip_address_from_string)(FIO::IPAddress& ip_address, std::string_view string);
@@ -26,12 +29,28 @@ struct fio_address_family
 	bool(*ip_end_point_from_address)(FIO::IPEndPoint& ip_end_point, const sockaddr& address, socklen_t size);
 };
 
+bool fio_ip_address_compare_ipv4(const FIO::IPAddress& ip_address1, const FIO::IPAddress& ip_address2)
+{
+	return ip_address1.IPv4.DWord == ip_address2.IPv4.DWord;
+}
+bool fio_ip_address_compare_ipv6(const FIO::IPAddress& ip_address1, const FIO::IPAddress& ip_address2)
+{
+#ifdef __SIZEOF_INT128__
+	return ip_address1.IPv6.OWord == ip_address2.IPv6.OWord;
+#else
+	return !memcmp(ip_address1.IPv6.Byte, ip_address2.IPv6.Byte, sizeof(ip_address1.IPv6.Byte));
+#endif
+}
 void fio_ip_address_to_string_ipv4(const FIO::IPAddress& ip_address, std::string& string)
 {
 	string = std::format("{}.{}.{}.{}", ip_address.IPv4.Byte[0], ip_address.IPv4.Byte[1], ip_address.IPv4.Byte[2], ip_address.IPv4.Byte[3]);
 }
 void fio_ip_address_to_string_ipv6(const FIO::IPAddress& ip_address, std::string& string)
 {
+#if defined(FIO_WIN32)
+	FIO::WinSock2 ws2;
+#endif
+
 	string.resize(INET6_ADDRSTRLEN, 0);
 
 	if (auto cstring = inet_ntop(AF_INET6, ip_address.IPv6.Byte, string.data(), INET6_ADDRSTRLEN))
@@ -56,6 +75,10 @@ void fio_ip_address_to_storage_ipv6(const FIO::IPAddress& ip_address, sockaddr_s
 }
 int  fio_ip_address_from_string_ipv4(FIO::IPAddress& ip_address, std::string_view string)
 {
+#if defined(FIO_WIN32)
+	FIO::WinSock2 ws2;
+#endif
+
 	switch (inet_pton(AF_INET, string.data(), &ip_address.IPv4))
 	{
 		case 0:  return 0;
@@ -68,6 +91,10 @@ int  fio_ip_address_from_string_ipv4(FIO::IPAddress& ip_address, std::string_vie
 }
 int  fio_ip_address_from_string_ipv6(FIO::IPAddress& ip_address, std::string_view string)
 {
+#if defined(FIO_WIN32)
+	FIO::WinSock2 ws2;
+#endif
+
 	switch (inet_pton(AF_INET6, string.data(), &ip_address.IPv6))
 	{
 		case 0:  return 0;
@@ -109,6 +136,10 @@ void fio_ip_end_point_to_string_ipv4(const FIO::IPEndPoint& ip_end_point, std::s
 }
 void fio_ip_end_point_to_string_ipv6(const FIO::IPEndPoint& ip_end_point, std::string& string)
 {
+#if defined(FIO_WIN32)
+	FIO::WinSock2 ws2;
+#endif
+
 	static constexpr size_t PORT_LENGTH = 1 + 5;
 
 	string.resize(INET6_ADDRSTRLEN + PORT_LENGTH, 0);
@@ -170,6 +201,7 @@ constexpr fio_address_family FIO_ADDRESS_FAMILY[] =
 #define DEFINE_FIO_ADDRESS_FAMILY(family, f) \
 	{ \
 		family, \
+		&fio_ip_address_compare_##f, \
 		&fio_ip_address_to_string_##f, \
 		&fio_ip_address_to_storage_##f, \
 		&fio_ip_address_from_string_##f, \
@@ -241,6 +273,21 @@ void           FIO::IPAddress::ToStorage(sockaddr_storage& storage, socklen_t& s
 		if (af.family == Family)
 			return af.ip_address_to_storage(*this, storage, size);
 }
+bool           FIO::IPAddress::operator == (const IPAddress& ip_address) const
+{
+	if (Family != ip_address.Family)
+		return false;
+
+	for (auto& af : FIO_ADDRESS_FAMILY)
+		if (af.family == Family)
+			return af.ip_address_compare(*this, ip_address);
+
+	return false;
+}
+bool           FIO::IPAddress::operator != (const IPAddress& ip_address) const
+{
+	return !operator==(ip_address);
+}
 
 FIO::IPEndPoint FIO::IPEndPoint::Any(uint16_t port)
 {
@@ -285,4 +332,15 @@ void            FIO::IPEndPoint::ToStorage(sockaddr_storage& storage, socklen_t&
 	for (auto& af : FIO_ADDRESS_FAMILY)
 		if (af.family == Host.Family)
 			return af.ip_end_point_to_storage(*this, storage, size);
+}
+bool            FIO::IPEndPoint::operator == (const IPEndPoint& ip_end_point) const
+{
+	if (Port != ip_end_point.Port)
+		return false;
+
+	return Host == ip_end_point.Host;
+}
+bool            FIO::IPEndPoint::operator != (const IPEndPoint& ip_end_point) const
+{
+	return !operator==(ip_end_point);
 }

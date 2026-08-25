@@ -3,6 +3,8 @@
 #if defined(FIO_LINUX)
 	#include <netdb.h>
 #elif defined(FIO_WIN32)
+	#include "WinSock2.hpp"
+
 	#include <Ws2Tcpip.h>
 #endif
 
@@ -44,7 +46,10 @@ void fio_dns_cleanup(addrinfo* result)
 
 int  FIO::DNS::Resolve(IPAddress& ip_address, std::string_view host, int family)
 {
-	addrinfo* result;
+#if defined(FIO_WIN32)
+	FIO::WinSock2 ws2;
+#endif
+	addrinfo*     result;
 
 	switch (fio_dns_begin(host, family, result))
 	{
@@ -70,7 +75,10 @@ int  FIO::DNS::Resolve(IPAddress& ip_address, std::string_view host, int family)
 }
 bool FIO::DNS::Enumerate(std::string_view host, int family, const EnumCallback& callback)
 {
-	addrinfo* result;
+#if defined(FIO_WIN32)
+	FIO::WinSock2 ws2;
+#endif
+	addrinfo*     result;
 
 	switch (fio_dns_begin(host, family, result))
 	{

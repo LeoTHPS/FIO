@@ -13,10 +13,6 @@
 #include <FIO/ByteBuffer.hpp>
 #include <FIO/ThreadPool.hpp>
 
-#ifdef FIO_WIN32
-	#include <FIO/WinSock2.hpp>
-#endif
-
 template<typename ... T>
 void print(std::string_view format, T ... args)
 {
@@ -46,9 +42,6 @@ void print(std::string_view format, T ... args)
 
 class demo_dns
 {
-#ifdef FIO_WIN32
-	FIO::WinSock2 ws2;
-#endif
 	int           family;
 	std::string   hostname;
 
@@ -146,9 +139,6 @@ private:
 
 class demo_socket_tcp
 {
-#ifdef FIO_WIN32
-	FIO::WinSock2   ws2;
-#endif
 	FIO::ThreadPool threads;
 	FIO::IPEndPoint end_point;
 
@@ -214,9 +204,6 @@ private:
 
 class demo_socket_udp
 {
-#ifdef FIO_WIN32
-	FIO::WinSock2   ws2;
-#endif
 	FIO::ThreadPool threads;
 	FIO::IPEndPoint end_point;
 

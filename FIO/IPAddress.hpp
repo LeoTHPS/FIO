@@ -1,8 +1,6 @@
 #pragma once
 #if defined(FIO_LINUX)
 	#include <sys/socket.h>
-
-	#include <netinet/in.h>
 #elif defined(FIO_WIN32)
 	#include <WinSock2.h>
 
@@ -63,6 +61,9 @@ namespace FIO
 		std::string ToString() const;
 
 		void        ToStorage(sockaddr_storage& storage, socklen_t& size) const;
+
+		bool operator == (const IPAddress& ip_address) const;
+		bool operator != (const IPAddress& ip_address) const;
 	};
 
 	struct IPEndPoint
@@ -81,5 +82,8 @@ namespace FIO
 		std::string ToString() const;
 
 		void        ToStorage(sockaddr_storage& storage, socklen_t& size) const;
+
+		bool operator == (const IPEndPoint& ip_end_point) const;
+		bool operator != (const IPEndPoint& ip_end_point) const;
 	};
 }

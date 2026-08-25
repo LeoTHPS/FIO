@@ -6,10 +6,9 @@
 	#define SD_SEND    SHUT_WR
 	#define SD_RECEIVE SHUT_RD
 #elif defined(FIO_WIN32)
-	#include <WinSock2.h>
-	#include <Windows.h>
+	#include "WinSock2.hpp"
 
-	typedef int socklen_t;
+	#include <Windows.h>
 #endif
 
 #include <list>
@@ -136,6 +135,7 @@ namespace FIO
 		std::atomic<int>      error;
 		int                   handle;
 #elif defined(FIO_WIN32)
+		WinSock2              ws2;
 		std::atomic<DWORD>    error;
 		SOCKET                handle;
 #endif

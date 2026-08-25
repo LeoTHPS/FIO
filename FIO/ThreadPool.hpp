@@ -27,7 +27,7 @@ namespace FIO
 		struct IOContext
 		{
 #if defined(FIO_WIN32)
-			OVERLAPPED           O;
+			OVERLAPPED O;
 #endif
 			IOCallback Callback;
 		};
@@ -35,8 +35,8 @@ namespace FIO
 		class  IOManager
 		{
 			std::list<IOContext*> list;
-			std::atomic_flag                list_busy;
-			std::atomic_flag                list_empty;
+			std::atomic_flag      list_busy;
+			std::atomic_flag      list_empty;
 
 			IOManager(IOManager&&) = delete;
 			IOManager(const IOManager&) = delete;

@@ -8,9 +8,8 @@
 #endif
 
 FIO::ThreadPool::IOManager::IOManager()
-	: list_busy(false),
-	list_empty(true)
 {
+	list_empty.test_and_set(std::memory_order_relaxed);
 }
 FIO::ThreadPool::IOManager::~IOManager()
 {
