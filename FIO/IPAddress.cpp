@@ -35,7 +35,7 @@ bool fio_ip_address_compare_ipv4(const FIO::IPAddress& ip_address1, const FIO::I
 }
 bool fio_ip_address_compare_ipv6(const FIO::IPAddress& ip_address1, const FIO::IPAddress& ip_address2)
 {
-#ifdef __SIZEOF_INT128__
+#if defined(__SIZEOF_INT128__)
 	return ip_address1.IPv6.OWord == ip_address2.IPv6.OWord;
 #else
 	return !memcmp(ip_address1.IPv6.Byte, ip_address2.IPv6.Byte, sizeof(ip_address1.IPv6.Byte));

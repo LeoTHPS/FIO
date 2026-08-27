@@ -11,17 +11,17 @@ namespace FIO
 
 	public:
 		static bool IsFile(std::string_view path);
-#ifdef FIO_WIN32
+#if defined(FIO_WIN32)
 		static bool IsFile(std::wstring_view path);
 #endif
 
 		static bool IsDirectory(std::string_view path);
-#ifdef FIO_WIN32
+#if defined(FIO_WIN32)
 		static bool IsDirectory(std::wstring_view path);
 #endif
 
 		static bool Exists(std::string_view path);
-#ifdef FIO_WIN32
+#if defined(FIO_WIN32)
 		static bool Exists(std::wstring_view path);
 #endif
 
@@ -36,7 +36,7 @@ namespace FIO
 
 			return value;
 		}
-#ifdef FIO_WIN32
+#if defined(FIO_WIN32)
 		template<typename ... T>
 		static constexpr auto Combine(std::wstring_view chunk, T ... chunks)
 		{

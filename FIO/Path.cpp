@@ -34,7 +34,7 @@ bool FIO::Path::IsFile(std::string_view path)
 
 	return true;
 }
-#ifdef FIO_WIN32
+#if defined(FIO_WIN32)
 bool FIO::Path::IsFile(std::wstring_view path)
 {
 	DWORD attributes;
@@ -71,7 +71,7 @@ bool FIO::Path::IsDirectory(std::string_view path)
 
 	return true;
 }
-#ifdef FIO_WIN32
+#if defined(FIO_WIN32)
 bool FIO::Path::IsDirectory(std::wstring_view path)
 {
 	DWORD attributes;
@@ -98,7 +98,7 @@ bool FIO::Path::Exists(std::string_view path)
 
 	return true;
 }
-#ifdef FIO_WIN32
+#if defined(FIO_WIN32)
 bool FIO::Path::Exists(std::wstring_view path)
 {
 	if (!PathFileExistsW(path.data()))

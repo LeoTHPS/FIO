@@ -93,7 +93,7 @@ namespace FIO
 		// @return -1 on not found
 		// @return -2 on already exists
 		static int  Copy(std::string_view source, std::string_view destination);
-#ifdef FIO_WIN32
+#if defined(FIO_WIN32)
 		// @return 0 on error
 		// @return -1 on not found
 		// @return -2 on already exists
@@ -104,7 +104,7 @@ namespace FIO
 		// @return -1 on not found
 		// @return -2 on already exists
 		static int  Move(std::string_view source, std::string_view destination);
-#ifdef FIO_WIN32
+#if defined(FIO_WIN32)
 		// @return 0 on error
 		// @return -1 on not found
 		// @return -2 on already exists
@@ -115,7 +115,7 @@ namespace FIO
 		// @return -1 on not found
 		// @return -2 on already exists
 		static int  Create(std::string_view path);
-#ifdef FIO_WIN32
+#if defined(FIO_WIN32)
 		// @return 0 on error
 		// @return -1 on not found
 		// @return -2 on already exists
@@ -125,19 +125,19 @@ namespace FIO
 		// @return 0 on error
 		// @return -1 on not found
 		static int  Delete(std::string_view path);
-#ifdef FIO_WIN32
+#if defined(FIO_WIN32)
 		// @return 0 on error
 		// @return -1 on not found
 		static int  Delete(std::wstring_view path);
 #endif
 
 		static bool Exists(std::string_view path);
-#ifdef FIO_WIN32
+#if defined(FIO_WIN32)
 		static bool Exists(std::wstring_view path);
 #endif
 
 		File(std::string_view path, int mode);
-#ifdef FIO_WIN32
+#if defined(FIO_WIN32)
 		File(std::wstring_view path, int mode);
 #endif
 

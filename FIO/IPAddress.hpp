@@ -33,7 +33,7 @@ namespace FIO
 			uint16_t    Word[8];
 			uint32_t    DWord[4];
 			uint64_t    QWord[2];
-#ifdef __SIZEOF_INT128__
+#if defined(__SIZEOF_INT128__)
 			__uint128_t OWord;
 #endif
 		};

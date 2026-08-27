@@ -67,8 +67,8 @@ void print(std::wstring_view format, T ... args)
 
 class demo_dns
 {
-	int           family;
-	std::string   hostname;
+	int         family;
+	std::string hostname;
 
 public:
 	demo_dns(std::string_view hostname, int family)

@@ -71,7 +71,7 @@ int  FIO::File::Copy(std::string_view source, std::string_view destination)
 
 	return 1;
 }
-#ifdef FIO_WIN32
+#if defined(FIO_WIN32)
 int  FIO::File::Copy(std::wstring_view source, std::wstring_view destination)
 {
 	if (!CopyFileW(source.data(), destination.data(), TRUE))
@@ -146,7 +146,7 @@ int  FIO::File::Move(std::string_view source, std::string_view destination)
 
 	return 1;
 }
-#ifdef FIO_WIN32
+#if defined(FIO_WIN32)
 int  FIO::File::Move(std::wstring_view source, std::wstring_view destination)
 {
 	if (!MoveFileW(source.data(), destination.data()))
@@ -210,7 +210,7 @@ int  FIO::File::Create(std::string_view path)
 
 	return 1;
 }
-#ifdef FIO_WIN32
+#if defined(FIO_WIN32)
 int  FIO::File::Create(std::wstring_view path)
 {
 	HANDLE handle;
@@ -263,7 +263,7 @@ int  FIO::File::Delete(std::string_view path)
 
 	return 1;
 }
-#ifdef FIO_WIN32
+#if defined(FIO_WIN32)
 int  FIO::File::Delete(std::wstring_view path)
 {
 	if (!DeleteFileW(path.data()))
@@ -286,7 +286,7 @@ bool FIO::File::Exists(std::string_view path)
 {
 	return Path::Exists(path) && Path::IsFile(path);
 }
-#ifdef FIO_WIN32
+#if defined(FIO_WIN32)
 bool FIO::File::Exists(std::wstring_view path)
 {
 	return Path::Exists(path) && Path::IsFile(path);
@@ -313,7 +313,7 @@ FIO::File::File(std::string_view path, int mode)
 	thread_pool(nullptr)
 {
 }
-#ifdef FIO_WIN32
+#if defined(FIO_WIN32)
 FIO::File::File(std::wstring_view path, int mode)
 	: is_open(false),
 	is_closing(false),
