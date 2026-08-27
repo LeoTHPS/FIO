@@ -4,15 +4,12 @@
 #endif
 
 #include <WinSock2.h>
-#include <Windows.h>
 
 namespace FIO
 {
 	class WinSock2
 	{
-		bool    is_loaded;
-
-		WSAData data;
+		bool is_loaded;
 
 	public:
 		WinSock2();
@@ -21,17 +18,17 @@ namespace FIO
 
 		~WinSock2();
 
-		void Unload();
-
-		constexpr operator bool () const
+		constexpr bool IsLoaded() const
 		{
 			return is_loaded;
 		}
 
-		constexpr auto operator -> () const
-		{
-			return is_loaded ? &data : nullptr;
-		}
+		const WSAData* GetData() const;
+
+		size_t         GetReferenceCount() const;
+
+		bool Load();
+		void Unload();
 
 		WinSock2& operator = (WinSock2&& ws2);
 		WinSock2& operator = (const WinSock2& ws2);
