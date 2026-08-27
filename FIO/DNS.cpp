@@ -8,40 +8,64 @@
 	#include <Ws2Tcpip.h>
 #endif
 
+template<typename T>
+struct fio_dns;
+template<>
+struct fio_dns<char>
+{
+	typedef addrinfo info;
+
+	static constexpr const char SERVICE[] = "";
+
+	static constexpr auto       get  = &getaddrinfo;
+	static constexpr auto       free = &freeaddrinfo;
+};
+#if defined(FIO_WIN32)
+template<>
+struct fio_dns<wchar_t>
+{
+	typedef addrinfoW info;
+
+	static constexpr const wchar_t SERVICE[] = L"";
+
+	static constexpr auto          get  = &GetAddrInfoW;
+	static constexpr auto          free = &FreeAddrInfoW;
+};
+#endif
+
 // @return 0 on error
 // @return -1 on not found
-int  fio_dns_begin(std::string_view host, int family, addrinfo*& result)
+template<typename T_CHAR>
+int  fio_dns_begin(typename fio_dns<T_CHAR>::info*& result, std::basic_string_view<T_CHAR> host, int family)
 {
-	addrinfo hint = { .ai_family = family };
+	typename fio_dns<T_CHAR>::info hint = { .ai_family = family };
 
-	if (auto error = getaddrinfo(host.data(), "", &hint, &result))
+	if (auto error = fio_dns<T_CHAR>::get(host.data(), fio_dns<T_CHAR>::SERVICE, &hint, &result))
 	{
-#if defined(FIO_LINUX)
 		switch (error)
 		{
+#if defined(FIO_LINUX)
 			case EAI_NODATA:
 			case EAI_NONAME:
 			case EAI_SERVICE:
 				return -1;
-		}
 #elif defined(FIO_WIN32)
-		switch (WSAGetLastError())
-		{
 			case WSANO_DATA:
 			case WSAHOST_NOT_FOUND:
 			case WSATYPE_NOT_FOUND:
 				return -1;
-		}
 #endif
+		}
 
 		return 0;
 	}
 
 	return 1;
 }
-void fio_dns_cleanup(addrinfo* result)
+template<typename T_CHAR>
+void fio_dns_cleanup(typename fio_dns<T_CHAR>::info* result)
 {
-	freeaddrinfo(result);
+	fio_dns<T_CHAR>::free(result);
 }
 
 int  FIO::DNS::Resolve(IPAddress& ip_address, std::string_view host, int family)
@@ -51,11 +75,8 @@ int  FIO::DNS::Resolve(IPAddress& ip_address, std::string_view host, int family)
 #endif
 	addrinfo*     result;
 
-	switch (fio_dns_begin(host, family, result))
-	{
-		case 0:  return 0;
-		case -1: return -1;
-	}
+	if (auto error = fio_dns_begin(result, host, family))
+		return error;
 
 	do
 	{
@@ -63,16 +84,42 @@ int  FIO::DNS::Resolve(IPAddress& ip_address, std::string_view host, int family)
 		{
 			bool success = IPAddress::FromAddress(ip_address, *result->ai_addr, result->ai_addrlen);
 
-			fio_dns_cleanup(result);
+			fio_dns_cleanup<char>(result);
 
 			return success ? 1 : 0;
 		}
 	} while (result = result->ai_next);
 
-	fio_dns_cleanup(result);
+	fio_dns_cleanup<char>(result);
 
 	return -1;
 }
+#if defined(FIO_WIN32)
+int  FIO::DNS::Resolve(IPAddress& ip_address, std::wstring_view host, int family)
+{
+	FIO::WinSock2 ws2;
+	addrinfoW*    result;
+
+	if (auto error = fio_dns_begin(result, host, family))
+		return error;
+
+	do
+	{
+		if (result->ai_family == family)
+		{
+			bool success = IPAddress::FromAddress(ip_address, *result->ai_addr, result->ai_addrlen);
+
+			fio_dns_cleanup<wchar_t>(result);
+
+			return success ? 1 : 0;
+		}
+	} while (result = result->ai_next);
+
+	fio_dns_cleanup<wchar_t>(result);
+
+	return -1;
+}
+#endif
 
 bool FIO::DNS::Enumerate(std::string_view host, int family, const EnumCallback& callback)
 {
@@ -81,7 +128,7 @@ bool FIO::DNS::Enumerate(std::string_view host, int family, const EnumCallback& 
 #endif
 	addrinfo*     result;
 
-	switch (fio_dns_begin(host, family, result))
+	switch (fio_dns_begin(result, host, family))
 	{
 		case 0:  return false;
 		case -1: return true;
@@ -95,7 +142,7 @@ bool FIO::DNS::Enumerate(std::string_view host, int family, const EnumCallback& 
 		{
 			if (!IPAddress::FromAddress(address, *result->ai_addr, result->ai_addrlen))
 			{
-				fio_dns_cleanup(result);
+				fio_dns_cleanup<char>(result);
 
 				return false;
 			}
@@ -105,7 +152,42 @@ bool FIO::DNS::Enumerate(std::string_view host, int family, const EnumCallback& 
 		}
 	} while (result = result->ai_next);
 
-	fio_dns_cleanup(result);
+	fio_dns_cleanup<char>(result);
 
 	return true;
 }
+#if defined(FIO_WIN32)
+bool FIO::DNS::Enumerate(std::wstring_view host, int family, const EnumCallback& callback)
+{
+	FIO::WinSock2 ws2;
+	addrinfoW*    result;
+
+	switch (fio_dns_begin(result, host, family))
+	{
+		case 0:  return false;
+		case -1: return true;
+	}
+
+	IPAddress address;
+
+	do
+	{
+		if (result->ai_family == family)
+		{
+			if (!IPAddress::FromAddress(address, *result->ai_addr, result->ai_addrlen))
+			{
+				fio_dns_cleanup<wchar_t>(result);
+
+				return false;
+			}
+
+			if (!callback(address))
+				break;
+		}
+	} while (result = result->ai_next);
+
+	fio_dns_cleanup<wchar_t>(result);
+
+	return true;
+}
+#endif
