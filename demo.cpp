@@ -67,19 +67,17 @@ void print(std::wstring_view format, T ... args)
 
 class demo_dns
 {
-	int         family;
 	std::string hostname;
 
 public:
-	demo_dns(std::string_view hostname, int family)
-		: family(family),
-		hostname(hostname)
+	demo_dns(std::string_view hostname)
+		: hostname(hostname)
 	{
 	}
 
 	void run()
 	{
-		print("FIO::DNS::Enumerate() -> {}", FIO::DNS::Enumerate(hostname, family, std::bind(&demo_dns::on_enum, this, std::placeholders::_1)));
+		print("FIO::DNS::Enumerate() -> {}", FIO::DNS::Enumerate(hostname, std::bind(&demo_dns::on_enum, this, std::placeholders::_1)));
 	}
 
 private:
@@ -359,8 +357,7 @@ public:
 
 int main(int argc, char* argv[])
 {
-	// demo_dns("www.google.com", FIO::IPAddress::FAMILY_V4).run();
-	// demo_dns("www.google.com", FIO::IPAddress::FAMILY_V6).run();
+	// demo_dns("www.google.com").run();
 
 	// demo_file_in("./demo.bin", THREAD_COUNT).run();
 	// demo_file_out("./demo.bin", THREAD_COUNT).run();
