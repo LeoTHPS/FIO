@@ -237,7 +237,7 @@ bool           FIO::IPAddress::FromString(IPAddress& ip_address, std::string_vie
 
 	return false;
 }
-bool           FIO::IPAddress::FromString(IPAddress& ip_address, int family, std::string_view string)
+bool           FIO::IPAddress::FromString(IPAddress& ip_address, std::string_view string, int family)
 {
 	for (auto& af : FIO_ADDRESS_FAMILY)
 		if (af.family == family)

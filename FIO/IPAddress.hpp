@@ -46,7 +46,7 @@ namespace FIO
 		static IPAddress Loopback6;
 
 		static bool FromString(IPAddress& ip_address, std::string_view string);
-		static bool FromString(IPAddress& ip_address, int family, std::string_view string);
+		static bool FromString(IPAddress& ip_address, std::string_view string, int family);
 
 		static bool FromAddress(IPAddress& ip_address, const sockaddr& address, socklen_t size);
 
