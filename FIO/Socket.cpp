@@ -182,8 +182,9 @@ int  FIO::Socket::Accept(Socket& socket)
 	if (!IsListening() || is_closing || (GetType() != socket.GetType()) || (GetAddressFamily() != socket.GetAddressFamily()))
 		return 0;
 
-	sockaddr_storage address[2]   = {};
-	socklen_t        address_size = sizeof(sockaddr_storage);
+	decltype(Socket::handle) handle;
+	sockaddr_storage         address[2]   = {};
+	socklen_t                address_size = sizeof(sockaddr_storage);
 
 	if ((handle = accept(GetHandle(), (sockaddr*)&address[1], &address_size)) == INVALID_SOCKET_HANDLE)
 	{
