@@ -363,19 +363,37 @@ public:
 class demo_mpsc_queue
 {
 	FIO::MPSCQueue<int> queue;
+	FIO::ThreadPool     threads;
 
 public:
-	demo_mpsc_queue()
+	demo_mpsc_queue(size_t thread_count)
+		: threads(thread_count)
 	{
 	}
 
 	void run()
 	{
+		print("threads.Start() -> {}", threads.Start());
+
 		for (int i = 0; i < 100; ++i)
+			threads.Post([this, i](FIO::ThreadPool& pool) {
+				queue.Push((int&&)i);
+
+				print("queue.Push({}) -> {}", i, true);
+			});
+
+		for (int i = 0, j; i < 100; )
 		{
-			print("queue.Push() -> {}", (queue.Push(std::move(i)), true));
-			print("queue.Pop() -> {}", queue.Pop(i));
+			if (!queue.Pop(j))
+				continue;
+
+			print("queue.Pop({}) -> {}", j, true);
+
+			++i;
 		}
+
+		print("threads.Shutdown() -> {}", (threads.Shutdown(), true));
+		print("threads.Join() -> {}", threads.Join());
 	}
 };
 
@@ -397,7 +415,7 @@ int main(int argc, char* argv[])
 
 	// demo_byte_buffer().run();
 
-	// demo_mpsc_queue().run();
+	// demo_mpsc_queue(THREAD_COUNT).run();
 
 	return 0;
 }
