@@ -9,7 +9,7 @@
 
 FIO::ThreadPool::IOManager::IOManager()
 {
-	list_empty.test_and_set(std::memory_order_relaxed);
+	list_empty.Lock();
 }
 FIO::ThreadPool::IOManager::~IOManager()
 {
@@ -17,15 +17,14 @@ FIO::ThreadPool::IOManager::~IOManager()
 }
 void FIO::ThreadPool::IOManager::Add(Context& value)
 {
-	Lock();
+	SpinLockGuard lock(list_lock);
 
 	list.push_front(&value);
-
-	Unlock();
+	list_empty.Unlock();
 }
 void FIO::ThreadPool::IOManager::Remove(Context& value)
 {
-	Lock();
+	SpinLockGuard lock(list_lock);
 
 	for (auto it = list.begin(); it != list.end(); ++it)
 		if (*it == &value)
@@ -34,18 +33,16 @@ void FIO::ThreadPool::IOManager::Remove(Context& value)
 
 			if (list.empty())
 			{
-				list_empty.test_and_set();
-				list_empty.notify_all();
+				list_empty.Lock();
+				list_empty.NotifyAll();
 			}
 
 			break;
 		}
-
-	Unlock();
 }
 void FIO::ThreadPool::IOManager::Wait() const
 {
-	list_empty.wait(false);
+	list_empty.Wait(false);
 }
 
 FIO::ThreadPool::ThreadPool(size_t size)

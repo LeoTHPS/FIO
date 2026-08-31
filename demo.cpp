@@ -1,4 +1,3 @@
-#include <atomic>
 #include <format>
 #include <iostream>
 #include <iterator>
@@ -8,12 +7,13 @@
 #include <FIO/File.hpp>
 #include <FIO/Timer.hpp>
 #include <FIO/Socket.hpp>
+#include <FIO/SpinLock.hpp>
 #include <FIO/MPSCQueue.hpp>
 #include <FIO/Directory.hpp>
 #include <FIO/ByteBuffer.hpp>
 #include <FIO/ThreadPool.hpp>
 
-std::atomic_flag print_busy;
+FIO::SpinLock    print_lock;
 const FIO::Timer print_timer;
 
 template<typename ... T>
@@ -21,9 +21,7 @@ void print(std::string_view format, T ... args)
 {
 	std::ostream_iterator<char> it(std::cout);
 
-	while (print_busy.test_and_set(std::memory_order_acquire))
-		while (print_busy.test(std::memory_order_relaxed))
-			;
+	FIO::SpinLockGuard lock(print_lock);
 
 	std::format_to(it, "[{:.6f}] ", print_timer.GetElapsed().ToMicroseconds() / 1000000.0f);
 #if defined(FIO_LINUX)
@@ -37,17 +35,13 @@ void print(std::string_view format, T ... args)
 		std::vformat_to(it, format, std::make_format_args(args ...));
 
 	std::cout << std::endl;
-
-	print_busy.clear(std::memory_order_release);
 }
 template<typename ... T>
 void print(std::wstring_view format, T ... args)
 {
 	std::ostreambuf_iterator<wchar_t> it(std::wcout);
 
-	while (print_busy.test_and_set(std::memory_order_acquire))
-		while (print_busy.test(std::memory_order_relaxed))
-			;
+	FIO::SpinLockGuard lock(print_lock);
 
 	std::format_to(it, L"[{:.6f}] ", print_timer.GetElapsed().ToMicroseconds() / 1000000.0f);
 #if defined(FIO_LINUX)
@@ -61,8 +55,6 @@ void print(std::wstring_view format, T ... args)
 		std::vformat_to(it, format, std::make_wformat_args(args ...));
 
 	std::wcout << std::endl;
-
-	print_busy.clear(std::memory_order_release);
 }
 
 class demo_dns

@@ -12,6 +12,8 @@
 	#include <Windows.h>
 #endif
 
+#include "SpinLock.hpp"
+
 namespace FIO
 {
 	class Thread;
@@ -35,8 +37,8 @@ namespace FIO
 		class  IOManager
 		{
 			std::list<IOContext*> list;
-			std::atomic_flag      list_busy;
-			std::atomic_flag      list_empty;
+			SpinLock              list_lock;
+			SpinLock              list_empty;
 
 			IOManager(IOManager&&) = delete;
 			IOManager(const IOManager&) = delete;
@@ -53,18 +55,6 @@ namespace FIO
 			void Remove(Context& value);
 
 			void Wait() const;
-
-		private:
-			inline void Lock()
-			{
-				while (list_busy.test_and_set(std::memory_order_acquire))
-					while (list_busy.test(std::memory_order_relaxed))
-						;
-			}
-			inline void Unlock()
-			{
-				list_busy.clear(std::memory_order_release);
-			}
 		};
 
 	private:

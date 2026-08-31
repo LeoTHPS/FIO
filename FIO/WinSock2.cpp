@@ -1,46 +1,29 @@
 #include "WinSock2.hpp"
+#include "SpinLock.hpp"
 
 #include <atomic>
 
-static std::atomic_flag ws2_busy;
 static WSAData          ws2_data;
+static FIO::SpinLock    ws2_lock;
 static size_t           ws2_ref_count;
 
-static void ws2_lock()
-{
-	while (ws2_busy.test_and_set(std::memory_order_acquire))
-		while (ws2_busy.test(std::memory_order_relaxed))
-			;
-}
-static void ws2_unlock()
-{
-	ws2_busy.clear(std::memory_order_release);
-}
 static bool ws2_load()
 {
-	ws2_lock();
+	FIO::SpinLockGuard lock(ws2_lock);
 
 	if (!ws2_ref_count && WSAStartup(MAKEWORD(2, 2), &ws2_data))
-	{
-		ws2_unlock();
-
 		return false;
-	}
 
 	++ws2_ref_count;
-
-	ws2_unlock();
 
 	return true;
 }
 static void ws2_unload()
 {
-	ws2_lock();
+	FIO::SpinLockGuard lock(ws2_lock);
 
 	if (ws2_ref_count && !--ws2_ref_count)
 		WSACleanup();
-
-	ws2_unlock();
 }
 
 FIO::WinSock2::WinSock2()
