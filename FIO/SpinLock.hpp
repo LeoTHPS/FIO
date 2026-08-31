@@ -27,7 +27,7 @@ namespace FIO
 		inline void Lock()
 		{
 			while (lock.test_and_set(std::memory_order_acquire))
-				while (lock.test_and_set(std::memory_order_relaxed))
+				while (lock.test(std::memory_order_relaxed))
 					;
 		}
 		inline void Unlock()
