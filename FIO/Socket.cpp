@@ -760,12 +760,10 @@ void FIO::Socket::OnAccept(ThreadPool& pool, ThreadPool::IOContext& io, size_t n
 #if defined(FIO_LINUX)
 	// TODO: implement linux
 #elif defined(FIO_WIN32)
-	if (auto error = accept->IO.O.Internal)
+	if (this->error = accept->IO.O.Internal)
 	{
 		if (!accept->ClientIsOpen)
 			accept->Client->Close();
-
-		accept->Client->error = error;
 
 		accept->Callback(*this, *accept->Client);
 	}
@@ -803,7 +801,6 @@ void FIO::Socket::OnAccept(ThreadPool& pool, ThreadPool::IOContext& io, size_t n
 				!IPEndPoint::FromAddress(accept->Client->ip_end_point_remote, (const sockaddr&)address[1], address_size[1]))
 				; // TODO: error
 
-			accept->Client->error        = 0;
 			accept->Client->is_open      = true;
 			accept->Client->is_connected = true;
 
@@ -821,8 +818,8 @@ void FIO::Socket::OnConnect(ThreadPool& pool, ThreadPool::IOContext& io, size_t 
 #if defined(FIO_LINUX)
 	// TODO: implement linux
 #elif defined(FIO_WIN32)
-	if (auto error = connect->IO.O.Internal)
-		this->error = error;
+	if (this->error = connect->IO.O.Internal)
+		;
 	else if (setsockopt(GetHandle(), SOL_SOCKET, SO_UPDATE_CONNECT_CONTEXT, nullptr, 0) == SOCKET_ERROR)
 		this->error = WSAGetLastError();
 	else
@@ -841,7 +838,6 @@ void FIO::Socket::OnConnect(ThreadPool& pool, ThreadPool::IOContext& io, size_t 
 				!IPEndPoint::FromAddress(this->ip_end_point_remote, (const sockaddr&)address[1], address_size[1]))
 				; // TODO: error
 
-			this->error        = 0;
 			this->is_connected = true;
 		}
 	}
@@ -858,8 +854,7 @@ void FIO::Socket::OnSend(ThreadPool& pool, ThreadPool::IOContext& io, size_t num
 #if defined(FIO_LINUX)
 	// TODO: implement linux
 #elif defined(FIO_WIN32)
-	if (auto error = send->IO.O.Internal)
-		this->error = error;
+	this->error = send->IO.O.Internal;
 
 	send->Callback(*this, send->Buffer.buf, send->Buffer.len, number_of_bytes_transferred);
 #endif
@@ -873,8 +868,7 @@ void FIO::Socket::OnSendTo(ThreadPool& pool, ThreadPool::IOContext& io, size_t n
 #if defined(FIO_LINUX)
 	// TODO: implement linux
 #elif defined(FIO_WIN32)
-	if (auto error = send_to->IO.O.Internal)
-		this->error = error;
+	this->error = send_to->IO.O.Internal;
 
 	send_to->Callback(*this, send_to->Buffer.buf, send_to->Buffer.len, number_of_bytes_transferred, send_to->RemoteEndPoint);
 #endif
@@ -888,8 +882,7 @@ void FIO::Socket::OnReceive(ThreadPool& pool, ThreadPool::IOContext& io, size_t 
 #if defined(FIO_LINUX)
 	// TODO: implement linux
 #elif defined(FIO_WIN32)
-	if (auto error = receive->IO.O.Internal)
-		this->error = error;
+	this->error = receive->IO.O.Internal;
 
 	receive->Callback(*this, receive->Buffer.buf, receive->Buffer.len, number_of_bytes_transferred);
 #endif
@@ -908,8 +901,7 @@ void FIO::Socket::OnReceiveFrom(ThreadPool& pool, ThreadPool::IOContext& io, siz
 #if defined(FIO_LINUX)
 	// TODO: implement linux
 #elif defined(FIO_WIN32)
-	if (auto error = receive_from->IO.O.Internal)
-		this->error = error;
+	this->error = receive_from->IO.O.Internal;
 
 	receive_from->Callback(*this, receive_from->Buffer.buf, receive_from->Buffer.len, number_of_bytes_transferred, remote_ip_end_point);
 #endif

@@ -60,7 +60,7 @@ void fio_ip_address_to_storage_ipv4(const FIO::IPAddress& ip_address, sockaddr_s
 {
 	size                                      = sizeof(sockaddr_in);
 	((sockaddr_in*)&storage)->sin_port        = 0;
-	((sockaddr_in*)&storage)->sin_addr.s_addr = ip_address.IPv4.DWord;
+	((sockaddr_in*)&storage)->sin_addr.s_addr = FIO::Endian::HostToNetwork(ip_address.IPv4.DWord);
 	((sockaddr_in*)&storage)->sin_family      = AF_INET;
 	memset(((sockaddr_in*)&storage)->sin_zero, 0, sizeof(((sockaddr_in*)&storage)->sin_zero));
 }
@@ -110,7 +110,7 @@ bool fio_ip_address_from_address_ipv4(FIO::IPAddress& ip_address, const sockaddr
 	if (size == sizeof(sockaddr_in))
 	{
 		ip_address.Family     = FIO::IPAddress::FAMILY_V4;
-		ip_address.IPv4.DWord = ((const sockaddr_in*)&address)->sin_addr.s_addr;
+		ip_address.IPv4.DWord = FIO::Endian::NetworkToHost(((const sockaddr_in*)&address)->sin_addr.s_addr);
 
 		return true;
 	}
@@ -155,8 +155,8 @@ void fio_ip_end_point_to_string_ipv6(const FIO::IPEndPoint& ip_end_point, std::s
 void fio_ip_end_point_to_storage_ipv4(const FIO::IPEndPoint& ip_end_point, sockaddr_storage& storage, socklen_t& size)
 {
 	size                                      = sizeof(sockaddr_in);
-	((sockaddr_in*)&storage)->sin_port        = FIO::Endian::NetworkToHost(ip_end_point.Port);
-	((sockaddr_in*)&storage)->sin_addr.s_addr = ip_end_point.Host.IPv4.DWord;
+	((sockaddr_in*)&storage)->sin_port        = FIO::Endian::HostToNetwork(ip_end_point.Port);
+	((sockaddr_in*)&storage)->sin_addr.s_addr = FIO::Endian::HostToNetwork(ip_end_point.Host.IPv4.DWord);
 	((sockaddr_in*)&storage)->sin_family      = AF_INET;
 	memset(((sockaddr_in*)&storage)->sin_zero, 0, sizeof(((sockaddr_in*)&storage)->sin_zero));
 }
@@ -174,7 +174,7 @@ bool fio_ip_end_point_from_address_ipv4(FIO::IPEndPoint& ip_end_point, const soc
 	if (size == sizeof(sockaddr_in))
 	{
 		ip_end_point.Host.Family     = FIO::IPAddress::FAMILY_V4;
-		ip_end_point.Host.IPv4.DWord = ((const sockaddr_in*)&address)->sin_addr.s_addr;
+		ip_end_point.Host.IPv4.DWord = FIO::Endian::NetworkToHost(((const sockaddr_in*)&address)->sin_addr.s_addr);
 		ip_end_point.Port            = FIO::Endian::NetworkToHost(((const sockaddr_in*)&address)->sin_port);
 
 		return true;
@@ -196,6 +196,7 @@ bool fio_ip_end_point_from_address_ipv6(FIO::IPEndPoint& ip_end_point, const soc
 	return false;
 }
 
+// TODO: remove the need for this..
 constexpr fio_address_family FIO_ADDRESS_FAMILY[] =
 {
 #define DEFINE_FIO_ADDRESS_FAMILY(family, f) \
@@ -214,14 +215,13 @@ constexpr fio_address_family FIO_ADDRESS_FAMILY[] =
 	DEFINE_FIO_ADDRESS_FAMILY(FIO::IPAddress::FAMILY_V4, ipv4),
 	DEFINE_FIO_ADDRESS_FAMILY(FIO::IPAddress::FAMILY_V6, ipv6)
 };
-
 static_assert(sizeof(FIO::IPAddress::V4) == sizeof(in_addr));
 static_assert(sizeof(FIO::IPAddress::V6) == sizeof(in6_addr));
 
-FIO::IPAddress FIO::IPAddress::Any       = { .Family = FIO::IPAddress::FAMILY_V4, .IPv4 = { .Byte = { (uint8_t)0, 0, 0, 0 } } };
-FIO::IPAddress FIO::IPAddress::Any6      = { .Family = FIO::IPAddress::FAMILY_V6, .IPv6 = { .Byte = { (uint8_t)0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } } };
-FIO::IPAddress FIO::IPAddress::Loopback  = { .Family = FIO::IPAddress::FAMILY_V4, .IPv4 = { .Byte = { (uint8_t)127, 0, 0, 1 } } };
-FIO::IPAddress FIO::IPAddress::Loopback6 = { .Family = FIO::IPAddress::FAMILY_V6, .IPv6 = { .Byte = { (uint8_t)0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 } } };
+FIO::IPAddress FIO::IPAddress::Any       = { .Family = FIO::IPAddress::FAMILY_V4, .IPv4 = { .DWord = 0x00000000 } };
+FIO::IPAddress FIO::IPAddress::Any6      = { .Family = FIO::IPAddress::FAMILY_V6, .IPv6 = { .Byte  = { (uint8_t)0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } } };
+FIO::IPAddress FIO::IPAddress::Loopback  = { .Family = FIO::IPAddress::FAMILY_V4, .IPv4 = { .DWord = 0x7F000001 } };
+FIO::IPAddress FIO::IPAddress::Loopback6 = { .Family = FIO::IPAddress::FAMILY_V6, .IPv6 = { .Byte  = { (uint8_t)0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 } } };
 bool           FIO::IPAddress::FromString(IPAddress& ip_address, std::string_view string)
 {
 	for (auto& af : FIO_ADDRESS_FAMILY)

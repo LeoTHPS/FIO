@@ -221,8 +221,8 @@ public:
 
 		print("socket2.Open() -> {}", socket2.Open(end_point.Host.Family));
 		print("socket2.Associate() -> {}", socket2.Associate(threads));
-		print("socket2.Connect() -> {}", socket2.Connect(end_point));
-		print("socket2.Send() -> {}", socket2.Send(socket2_buffer, sizeof(socket2_buffer), std::bind(&demo_socket_tcp::on_send, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
+		print("socket2.Bind() -> {}", socket2.Bind({ .Host = FIO::IPAddress { .Family = end_point.Host.Family }, .Port = 0 }));
+		print("socket2.Connect() -> {}", socket2.Connect(end_point, std::bind(&demo_socket_tcp::on_connect, this, std::placeholders::_1)));
 
 		// print("threads.Shutdown() -> {}", (threads.Shutdown(), true));
 		print("threads.Join() -> {}", threads.Join());
@@ -235,6 +235,13 @@ private:
 
 		print("socket1_client.Associate() -> {}", client.Associate(threads));
 		print("socket1_client.Receive() -> {}", client.Receive(socket1_buffer, sizeof(socket1_buffer), std::bind(&demo_socket_tcp::on_receive, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
+	}
+
+	void on_connect(FIO::Socket& socket)
+	{
+		print("connected to {} [error: {}]", socket.GetRemoteEndPoint().ToString(), socket.GetLastError());
+
+		print("socket2.Send() -> {}", socket.Send(socket2_buffer, sizeof(socket2_buffer), std::bind(&demo_socket_tcp::on_send, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
 	}
 
 	void on_send(FIO::Socket& socket, const void* buffer, size_t size, size_t number_of_bytes_sent)
