@@ -141,6 +141,7 @@ namespace FIO
 		bool                  is_connected;
 		bool                  is_listening;
 		bool                  is_associated;
+		bool                  is_monitoring;
 
 		const int             type;
 		const int             protocol;
@@ -196,6 +197,11 @@ namespace FIO
 		constexpr bool  IsAssociated() const
 		{
 			return is_associated;
+		}
+
+		constexpr bool  IsMonitoring() const
+		{
+			return is_monitoring;
 		}
 
 		constexpr auto  GetType() const
@@ -259,6 +265,8 @@ namespace FIO
 		// @return 0 on error
 		// @return -1 on would block
 		int  Connect(const IPEndPoint& remote_ip_end_point, ConnectCallback&& callback);
+
+		bool Monitor(bool set = true);
 
 		bool Shutdown(int type);
 

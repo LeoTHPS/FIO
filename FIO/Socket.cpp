@@ -37,6 +37,7 @@ FIO::Socket::Socket(int type, int protocol)
 	is_connected(false),
 	is_listening(false),
 	is_associated(false),
+	is_monitoring(false),
 	type(type),
 #if defined(FIO_LINUX)
 	error(0),
@@ -155,6 +156,7 @@ void FIO::Socket::Close(bool wait_for_io)
 		is_blocking         = true;
 		is_connected        = false;
 		is_associated       = false;
+		is_monitoring       = false;
 	}
 }
 
@@ -396,6 +398,30 @@ int  FIO::Socket::Connect(const IPEndPoint& remote_ip_end_point, ConnectCallback
 #endif
 
 	return 1;
+}
+
+bool FIO::Socket::Monitor(bool set)
+{
+	if (!IsOpen())
+		return false;
+
+#if defined(FIO_LINUX)
+	// TODO: implement linux
+#elif defined(FIO_WIN32)
+	DWORD buffer_in      = set ? RCVALL_ON : RCVALL_OFF;
+	DWORD bytes_returned = 0;
+
+	if (WSAIoctl(GetHandle(), SIO_RCVALL, &buffer_in, sizeof(buffer_in), nullptr, 0, &bytes_returned, nullptr, nullptr) == SOCKET_ERROR)
+	{
+		error = WSAGetLastError();
+
+		return false;
+	}
+#endif
+
+	is_monitoring = set;
+
+	return true;
 }
 
 bool FIO::Socket::Shutdown(int type)

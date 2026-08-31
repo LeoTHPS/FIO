@@ -305,6 +305,47 @@ private:
 	}
 };
 
+class demo_socket_raw_sniff_v4
+{
+	uint8_t         buffer[0xFFF];
+	FIO::Socket     socket;
+	FIO::ThreadPool threads;
+	FIO::IPEndPoint end_point;
+
+public:
+	demo_socket_raw_sniff_v4(const FIO::IPAddress& address, size_t thread_count)
+		: socket(FIO::Socket::TYPE_RAW, FIO::Socket::PROTOCOL_IPV4),
+		threads(thread_count),
+		end_point{
+			.Host = address,
+			.Port = 0
+		}
+	{
+	}
+
+	void run()
+	{
+		print("threads.Start() -> {}", threads.Start());
+
+		print("socket.Open() -> {}", socket.Open(end_point.Host.Family));
+		print("socket.Bind() -> {}", socket.Bind(end_point));
+		print("socket.Associate() -> {}", socket.Associate(threads));
+		print("socket.Monitor() -> {}", socket.Monitor());
+		print("socket.Receive() -> {}", socket.Receive(buffer, sizeof(buffer), std::bind(&demo_socket_raw_sniff_v4::on_receive, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
+
+		// print("threads.Shutdown() -> {}", (threads.Shutdown(), true));
+		print("threads.Join() -> {}", threads.Join());
+	}
+
+private:
+	void on_receive(FIO::Socket& socket, void* buffer, size_t size, size_t number_of_bytes_received)
+	{
+		print("received {} bytes [error: {}]", number_of_bytes_received, socket.GetLastError());
+
+		socket.Receive(buffer, size, std::bind(&demo_socket_raw_sniff_v4::on_receive, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+	}
+};
+
 class demo_directory
 {
 	std::string path;
@@ -410,6 +451,7 @@ int main(int argc, char* argv[])
 
 	// demo_socket_tcp(FIO::IPEndPoint::Loopback(9001), THREAD_COUNT).run();
 	// demo_socket_udp(FIO::IPEndPoint::Loopback(9001), THREAD_COUNT).run();
+	// demo_socket_raw_sniff_v4(FIO::IPAddress::Loopback, THREAD_COUNT).run();
 
 	// demo_directory().run();
 
