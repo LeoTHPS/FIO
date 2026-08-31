@@ -1,6 +1,5 @@
 #pragma once
 #include <string>
-#include <vector>
 #include <cstdint>
 #include <type_traits>
 
@@ -13,16 +12,16 @@ namespace FIO
 		template<typename T>
 		static constexpr bool is_enum_or_numeric_v = std::is_enum_v<T> || std::is_integral_v<T> || std::is_floating_point_v<T>;
 
-		std::vector<uint8_t> buffer;
-		int                  buffer_endian;
-		size_t               buffer_capacity;
-		bool                 buffer_allocated;
+		uint8_t*       buffer;
+		int            buffer_endian;
+		size_t         buffer_capacity;
+		bool           buffer_allocated;
 
-		const uint8_t*       buffer_read;
-		size_t               buffer_read_position;
+		const uint8_t* buffer_read;
+		size_t         buffer_read_position;
 
-		uint8_t*             buffer_write;
-		size_t               buffer_write_position;
+		uint8_t*       buffer_write;
+		size_t         buffer_write_position;
 
 	public:
 		static ByteBuffer Copy(const void* buffer, size_t size, int endian);

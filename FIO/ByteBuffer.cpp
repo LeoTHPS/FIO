@@ -7,7 +7,7 @@ FIO::ByteBuffer FIO::ByteBuffer::Copy(const void* buffer, size_t size, int endia
 {
 	ByteBuffer value(size, endian);
 
-	memcpy(value.buffer.data(), buffer, size);
+	memcpy(value.buffer, buffer, size);
 
 	return value;
 }
@@ -33,18 +33,18 @@ FIO::ByteBuffer FIO::ByteBuffer::Open(const void* buffer, size_t size, int endia
 }
 
 FIO::ByteBuffer::ByteBuffer()
-	: buffer(0, 0),
+	: buffer(nullptr),
 	buffer_endian(Endian::MACHINE),
 	buffer_capacity(0),
-	buffer_allocated(true),
-	buffer_read(buffer.data()),
+	buffer_allocated(false),
+	buffer_read(nullptr),
 	buffer_read_position(0),
-	buffer_write(buffer.data()),
+	buffer_write(nullptr),
 	buffer_write_position(0)
 {
 }
 FIO::ByteBuffer::ByteBuffer(ByteBuffer&& buffer)
-	: buffer(std::move(buffer.buffer)),
+	: buffer(buffer.buffer),
 	buffer_endian(buffer.buffer_endian),
 	buffer_capacity(buffer.buffer_capacity),
 	buffer_allocated(buffer.buffer_allocated),
@@ -53,39 +53,44 @@ FIO::ByteBuffer::ByteBuffer(ByteBuffer&& buffer)
 	buffer_write(buffer.buffer_write),
 	buffer_write_position(buffer.buffer_write_position)
 {
+	buffer.buffer                = nullptr;
 	buffer.buffer_endian         = Endian::MACHINE;
 	buffer.buffer_capacity       = 0;
-	buffer.buffer_allocated      = true;
-	buffer.buffer_read           = buffer.buffer.data();
+	buffer.buffer_allocated      = false;
+	buffer.buffer_read           = nullptr;
 	buffer.buffer_read_position  = 0;
-	buffer.buffer_write          = buffer.buffer.data();
+	buffer.buffer_write          = nullptr;
 	buffer.buffer_write_position = 0;
 }
 FIO::ByteBuffer::ByteBuffer(const ByteBuffer& buffer)
-	: buffer(buffer.buffer),
+	: buffer(buffer.buffer ? new uint8_t[buffer.buffer_capacity] : nullptr),
 	buffer_endian(buffer.buffer_endian),
 	buffer_capacity(buffer.buffer_capacity),
 	buffer_allocated(buffer.buffer_allocated),
-	buffer_read(this->buffer_allocated ? this->buffer.data() : buffer.buffer_read),
+	buffer_read(this->buffer_allocated ? this->buffer : buffer.buffer_read),
 	buffer_read_position(buffer.buffer_read_position),
-	buffer_write(this->buffer_allocated ? this->buffer.data() : buffer.buffer_write),
+	buffer_write(this->buffer_allocated ? this->buffer : buffer.buffer_write),
 	buffer_write_position(buffer.buffer_write_position)
 {
+	if (buffer_allocated)
+		memcpy(this->buffer, buffer.buffer, buffer.GetCapacity());
 }
 FIO::ByteBuffer::ByteBuffer(size_t capacity, int endian)
-	: buffer(capacity, 0),
+	: buffer(new uint8_t[capacity]),
 	buffer_endian(endian),
 	buffer_capacity(capacity),
 	buffer_allocated(true),
-	buffer_read(buffer.data()),
+	buffer_read(buffer),
 	buffer_read_position(0),
-	buffer_write(buffer.data()),
+	buffer_write(buffer),
 	buffer_write_position(0)
 {
 }
 
 FIO::ByteBuffer::~ByteBuffer()
 {
+	if (buffer_allocated)
+		delete[] buffer;
 }
 
 uint32_t FIO::ByteBuffer::GetNextBlockSize() const
@@ -127,16 +132,30 @@ void FIO::ByteBuffer::SetEndian(int value)
 
 void FIO::ByteBuffer::SetCapacity(size_t value)
 {
-	buffer.resize(value);
-	buffer_capacity  = value;
-	buffer_allocated = true;
-	buffer_read      = buffer.data();
-	buffer_write     = buffer.data();
+	if (auto capacity = GetCapacity(); value != capacity)
+	{
+		auto buffer = new uint8_t[value];
 
-	if (buffer_read_position > value)
-		buffer_read_position = value;
-	if (buffer_write_position > value)
-		buffer_write_position = value;
+		if (this->buffer_read)
+			if (value <= capacity)
+				memcpy(buffer, this->buffer_read, value);
+			else
+				memcpy(buffer, this->buffer_read, capacity);
+
+		if (this->buffer_allocated)
+			delete[] this->buffer;
+
+		this->buffer           = buffer;
+		this->buffer_capacity  = value;
+		this->buffer_allocated = true;
+		this->buffer_read      = buffer;
+		this->buffer_write     = buffer;
+
+		if (buffer_read_position > value)
+			buffer_read_position = value;
+		if (buffer_write_position > value)
+			buffer_write_position = value;
+	}
 }
 
 void FIO::ByteBuffer::SetReadPosition(size_t value)
@@ -312,7 +331,8 @@ bool FIO::ByteBuffer::WriteBlock(const void* buffer, uint32_t size)
 
 FIO::ByteBuffer& FIO::ByteBuffer::operator = (ByteBuffer&& buffer)
 {
-	this->buffer                 = std::move(buffer.buffer);
+	this->buffer                 = buffer.buffer;
+	buffer.buffer                = nullptr;
 
 	this->buffer_endian          = buffer.buffer_endian;
 	buffer.buffer_endian         = Endian::MACHINE;
@@ -321,16 +341,16 @@ FIO::ByteBuffer& FIO::ByteBuffer::operator = (ByteBuffer&& buffer)
 	buffer.buffer_capacity       = 0;
 
 	this->buffer_allocated       = buffer.buffer_allocated;
-	buffer.buffer_allocated      = true;
+	buffer.buffer_allocated      = false;
 
 	this->buffer_read            = buffer.buffer_read;
-	buffer.buffer_read           = buffer.buffer.data();
+	buffer.buffer_read           = nullptr;
 
 	this->buffer_read_position   = buffer.buffer_read_position;
 	buffer.buffer_read_position  = 0;
 
 	this->buffer_write           = buffer.buffer_write;
-	buffer.buffer_write          = buffer.buffer.data();
+	buffer.buffer_write          = nullptr;
 
 	this->buffer_write_position  = buffer.buffer_write_position;
 	buffer.buffer_write_position = 0;
@@ -339,14 +359,17 @@ FIO::ByteBuffer& FIO::ByteBuffer::operator = (ByteBuffer&& buffer)
 }
 FIO::ByteBuffer& FIO::ByteBuffer::operator = (const ByteBuffer& buffer)
 {
-	this->buffer                = buffer.buffer;
+	this->buffer                = buffer.buffer ? new uint8_t[buffer.buffer_capacity] : nullptr;
 	this->buffer_endian         = buffer.buffer_endian;
 	this->buffer_capacity       = buffer.buffer_capacity;
 	this->buffer_allocated      = buffer.buffer_allocated;
-	this->buffer_read           = this->buffer_allocated ? this->buffer.data() : buffer.buffer_read;
+	this->buffer_read           = this->buffer_allocated ? this->buffer : buffer.buffer_read;
 	this->buffer_read_position  = buffer.buffer_read_position;
-	this->buffer_write          = this->buffer_allocated ? this->buffer.data() : buffer.buffer_write;
+	this->buffer_write          = this->buffer_allocated ? this->buffer : buffer.buffer_write;
 	this->buffer_write_position = buffer.buffer_write_position;
+
+	if (this->buffer_allocated)
+		memcpy(this->buffer, buffer.buffer, buffer.GetCapacity());
 
 	return *this;
 }
