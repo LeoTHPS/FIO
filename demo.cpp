@@ -202,9 +202,9 @@ public:
 	demo_socket_tcp(FIO::IPEndPoint&& local_end_point, size_t thread_count)
 		: threads(thread_count),
 		end_point(std::move(local_end_point)),
-		socket1(FIO::Socket::TYPE_TCP, end_point.Host.Family),
-		socket1_client(FIO::Socket::TYPE_TCP, end_point.Host.Family),
-		socket2(FIO::Socket::TYPE_TCP, end_point.Host.Family)
+		socket1(FIO::Socket::TYPE_STREAM, FIO::Socket::PROTOCOL_TCP),
+		socket1_client(FIO::Socket::TYPE_STREAM, FIO::Socket::PROTOCOL_TCP),
+		socket2(FIO::Socket::TYPE_STREAM, FIO::Socket::PROTOCOL_TCP)
 	{
 	}
 
@@ -212,13 +212,13 @@ public:
 	{
 		print("threads.Start() -> {}", threads.Start());
 
-		print("socket1.Open() -> {}", socket1.Open());
+		print("socket1.Open() -> {}", socket1.Open(end_point.Host.Family));
 		print("socket1.Associate() -> {}", socket1.Associate(threads));
 		print("socket1.Bind() -> {}", socket1.Bind(end_point));
 		print("socket1.Listen() -> {}", socket1.Listen());
 		print("socket1.Accept() -> {}", socket1.Accept(socket1_client, std::bind(&demo_socket_tcp::on_accept, this, std::placeholders::_1, std::placeholders::_2)));
 
-		print("socket2.Open() -> {}", socket2.Open());
+		print("socket2.Open() -> {}", socket2.Open(end_point.Host.Family));
 		print("socket2.Associate() -> {}", socket2.Associate(threads));
 		print("socket2.Connect() -> {}", socket2.Connect(end_point));
 		print("socket2.Send() -> {}", socket2.Send(socket2_buffer, sizeof(socket2_buffer), std::bind(&demo_socket_tcp::on_send, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
@@ -266,8 +266,8 @@ public:
 	demo_socket_udp(FIO::IPEndPoint&& local_end_point, size_t thread_count)
 		: threads(thread_count),
 		end_point(std::move(local_end_point)),
-		socket1(FIO::Socket::TYPE_UDP, end_point.Host.Family),
-		socket2(FIO::Socket::TYPE_UDP, end_point.Host.Family)
+		socket1(FIO::Socket::TYPE_DGRAM, FIO::Socket::PROTOCOL_UDP),
+		socket2(FIO::Socket::TYPE_DGRAM, FIO::Socket::PROTOCOL_UDP)
 	{
 	}
 
@@ -275,12 +275,12 @@ public:
 	{
 		print("threads.Start() -> {}", threads.Start());
 
-		print("socket1.Open() -> {}", socket1.Open());
+		print("socket1.Open() -> {}", socket1.Open(end_point.Host.Family));
 		print("socket1.Associate() -> {}", socket1.Associate(threads));
 		print("socket1.Bind() -> {}", socket1.Bind(end_point));
 		print("socket1.Receive() -> {}", socket1.Receive(socket1_buffer, sizeof(socket1_buffer), std::bind(&demo_socket_udp::on_receive, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
 
-		print("socket2.Open() -> {}", socket2.Open());
+		print("socket2.Open() -> {}", socket2.Open(end_point.Host.Family));
 		print("socket2.Associate() -> {}", socket2.Associate(threads));
 		print("socket2.Connect() -> {}", socket2.Connect(end_point));
 		print("socket2.Send() -> {}", socket2.Send(socket2_buffer, sizeof(socket2_buffer), std::bind(&demo_socket_udp::on_send, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));

@@ -29,7 +29,7 @@
 
 #define INVALID_SOCKET_HANDLE INVALID_SOCKET
 
-FIO::Socket::Socket(int type, int address_family)
+FIO::Socket::Socket(int type, int protocol)
 	: is_open(false),
 	is_bound(false),
 	is_closing(false),
@@ -45,7 +45,8 @@ FIO::Socket::Socket(int type, int address_family)
 	error(0),
 	handle(INVALID_SOCKET_HANDLE),
 #endif
-	address_family(address_family),
+	protocol(protocol),
+	address_family(0),
 	ip_end_point_local{},
 	ip_end_point_remote{},
 	thread_pool(nullptr)
@@ -101,15 +102,15 @@ bool FIO::Socket::SetBlocking(bool value)
 	return true;
 }
 
-bool FIO::Socket::Open()
+bool FIO::Socket::Open(int address_family)
 {
 	if (IsOpen())
 		return false;
 
 #if defined(FIO_LINUX)
-	if ((handle = socket(GetAddressFamily(), GetType() >> 8, GetType() & 0xFF)) == INVALID_SOCKET)
+	if ((handle = socket(address_family, GetType(), GetProtocol())) == INVALID_SOCKET)
 #elif defined(FIO_WIN32)
-	if ((handle = WSASocket(GetAddressFamily(), GetType() >> 8, GetType() & 0xFF, nullptr, 0, WSA_FLAG_OVERLAPPED)) == INVALID_SOCKET)
+	if ((handle = WSASocket(address_family, GetType(), GetProtocol(), nullptr, 0, WSA_FLAG_OVERLAPPED)) == INVALID_SOCKET)
 #endif
 	{
 		error = WSAGetLastError();
@@ -117,8 +118,9 @@ bool FIO::Socket::Open()
 		return false;
 	}
 
-	error   = 0;
-	is_open = true;
+	this->error          = 0;
+	this->address_family = address_family;
+	this->is_open        = true;
 
 	return true;
 }
@@ -143,6 +145,7 @@ void FIO::Socket::Close(bool wait_for_io)
 		error               = 0;
 		handle              = INVALID_SOCKET_HANDLE;
 		thread_pool         = nullptr;
+		address_family      = 0;
 		ip_end_point_local  = {};
 		ip_end_point_remote = {};
 
@@ -180,7 +183,7 @@ bool FIO::Socket::Bind(const IPEndPoint& local_ip_end_point)
 
 int  FIO::Socket::Accept(Socket& socket)
 {
-	if (!IsListening() || is_closing || (GetType() != socket.GetType()) || (GetAddressFamily() != socket.GetAddressFamily()))
+	if (!IsListening() || is_closing || (GetType() != socket.GetType()) || (GetProtocol() != socket.GetProtocol()))
 		return 0;
 
 	decltype(Socket::handle) handle;
@@ -221,6 +224,7 @@ int  FIO::Socket::Accept(Socket& socket)
 	error                 = 0;
 
 	socket.handle         = handle;
+	socket.address_family = GetAddressFamily();
 	socket.is_open        = true;
 	socket.is_connected   = true;
 
@@ -232,7 +236,7 @@ int  FIO::Socket::Accept(Socket& socket)
 }
 int  FIO::Socket::Accept(Socket& socket, AcceptCallback&& callback)
 {
-	if (!IsListening() || is_closing || !IsAssociated() || (GetType() != socket.GetType()) || (GetAddressFamily() != socket.GetAddressFamily()))
+	if (!IsListening() || is_closing || !IsAssociated() || (GetType() != socket.GetType()) || (GetProtocol() != socket.GetProtocol()))
 		return 0;
 
 #if defined(FIO_LINUX)
@@ -241,7 +245,7 @@ int  FIO::Socket::Accept(Socket& socket, AcceptCallback&& callback)
 #elif defined(FIO_WIN32)
 	bool socket_is_open = socket.IsOpen();
 
-	if ((!socket_is_open && !socket.Open()) || socket.IsBound() || socket.IsConnected() || socket.IsListening())
+	if ((!socket_is_open && !socket.Open(GetAddressFamily())) || socket.IsBound() || socket.IsConnected() || socket.IsListening())
 		return 0;
 
 	auto context = new IOContext_Accept

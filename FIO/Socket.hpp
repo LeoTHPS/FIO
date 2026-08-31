@@ -24,11 +24,23 @@ namespace FIO
 	public:
 		enum TYPE
 		{
-			TYPE_RAW     = (SOCK_RAW    << 8) | IPPROTO_RAW,
-			TYPE_TCP     = (SOCK_STREAM << 8) | IPPROTO_TCP,
-			TYPE_UDP     = (SOCK_DGRAM  << 8) | IPPROTO_UDP,
-			TYPE_ICMP    = (SOCK_RAW    << 8) | IPPROTO_ICMP,
-			TYPE_ICMP_V6 = (SOCK_RAW    << 8) | IPPROTO_ICMPV6
+			TYPE_RAW       = SOCK_RAW,
+			TYPE_RDM       = SOCK_RDM,
+			TYPE_DGRAM     = SOCK_DGRAM,
+			TYPE_STREAM    = SOCK_STREAM,
+			TYPE_SEQPACKET = SOCK_SEQPACKET
+		};
+
+		enum PROTOCOL
+		{
+			PROTOCOL_TCP      = IPPROTO_TCP,
+			PROTOCOL_UDP      = IPPROTO_UDP,
+
+			PROTOCOL_IPV4     = IPPROTO_IP,
+			PROTOCOL_IPV6     = IPPROTO_IPV6,
+
+			PROTOCOL_ICMPV4   = IPPROTO_ICMP,
+			PROTOCOL_ICMPV6   = IPPROTO_ICMPV6
 		};
 
 		enum SHUTDOWN
@@ -131,6 +143,8 @@ namespace FIO
 		bool                  is_associated;
 
 		const int             type;
+		const int             protocol;
+
 #if defined(FIO_LINUX)
 		std::atomic<int>      error;
 		int                   handle;
@@ -139,7 +153,7 @@ namespace FIO
 		std::atomic<DWORD>    error;
 		SOCKET                handle;
 #endif
-		const int             address_family;
+		int                   address_family;
 		IPEndPoint            ip_end_point_local;
 		IPEndPoint            ip_end_point_remote;
 
@@ -150,7 +164,7 @@ namespace FIO
 		Socket(const Socket&) = delete;
 
 	public:
-		Socket(int type, int address_family);
+		Socket(int type, int protocol);
 
 		virtual ~Socket();
 
@@ -194,6 +208,11 @@ namespace FIO
 			return handle;
 		}
 
+		constexpr auto  GetProtocol() const
+		{
+			return protocol;
+		}
+
 		inline    auto  GetLastError() const
 		{
 			return error.load();
@@ -221,7 +240,7 @@ namespace FIO
 
 		bool SetBlocking(bool value = true);
 
-		bool Open();
+		bool Open(int address_family);
 		void Close(bool wait_for_io = false);
 
 		bool Bind(const IPEndPoint& local_ip_end_point);
