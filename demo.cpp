@@ -1,4 +1,5 @@
 #include <format>
+#include <string>
 #include <iostream>
 #include <iterator>
 
@@ -340,7 +341,19 @@ public:
 private:
 	void on_receive(FIO::Socket& socket, void* buffer, size_t size, size_t number_of_bytes_received)
 	{
-		print("received {} bytes [error: {}]", number_of_bytes_received, socket.GetLastError());
+		std::string hex(number_of_bytes_received * 2, '\0');
+		auto        src  = (const uint8_t*)buffer;
+		auto        dest = hex.data();
+
+		static constexpr char HEX[] = "0123456789ABCDEF";
+
+		for (size_t i = 0; i < number_of_bytes_received; ++i, ++src)
+		{
+			*dest++ = HEX[(*src >> 4)];
+			*dest++ = HEX[(*src & 0xF)];
+		}
+
+		print("received {} bytes [error: {}]: {}", number_of_bytes_received, socket.GetLastError(), hex);
 
 		socket.Receive(buffer, size, std::bind(&demo_socket_raw_sniff_v4::on_receive, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 	}
