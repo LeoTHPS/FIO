@@ -13,6 +13,10 @@
 #include <FIO/ByteBuffer.hpp>
 #include <FIO/ThreadPool.hpp>
 
+#ifdef FIO_WIN32
+	#include <FIO/WinSock2.hpp>
+#endif
+
 FIO::SpinLock    print_lock;
 const FIO::Timer print_timer;
 
@@ -78,6 +82,36 @@ private:
 		print(ip_address.ToString());
 
 		return true;
+	}
+};
+
+class demo_ws2
+{
+#ifdef FIO_WIN32
+	FIO::WinSock2 ws2;
+#endif
+
+public:
+	demo_ws2()
+	{
+	}
+
+	void run()
+	{
+#ifdef FIO_WIN32
+		print("ws2.IsLoaded() -> {}", ws2.IsLoaded());
+
+		if (auto data = ws2.GetData())
+		{
+			print("data->wVersion -> {}.{}", (data->wVersion >> 8), (data->wVersion & 0xFF));
+			print("data->wHighVersion -> {}.{}", (data->wHighVersion >> 8), (data->wHighVersion & 0xFF));
+			print("data->iMaxSockets -> {}", data->iMaxSockets);
+			print("data->iMaxUdpDg -> {}", data->iMaxUdpDg);
+			print("data->lpVendorInfo -> {}", data->lpVendorInfo ? data->lpVendorInfo : "");
+			print("data->szDescription -> {}", data->szDescription);
+			print("data->szSystemStatus -> {}", data->szSystemStatus);
+		}
+#endif
 	}
 };
 
@@ -350,6 +384,8 @@ public:
 int main(int argc, char* argv[])
 {
 	// demo_dns("www.google.com").run();
+
+	// demo_ws2().run();
 
 	// demo_file_in("./demo.bin", THREAD_COUNT).run();
 	// demo_file_out("./demo.bin", THREAD_COUNT).run();
