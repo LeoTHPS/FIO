@@ -55,6 +55,8 @@ const WSAData* FIO::WinSock2::GetData() const
 
 size_t         FIO::WinSock2::GetReferenceCount() const
 {
+	FIO::SpinLockGuard lock(ws2_lock);
+
 	return IsLoaded() ? ws2_ref_count : 0;
 }
 
