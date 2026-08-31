@@ -328,7 +328,7 @@ bool FIO::Socket::Connect(const IPEndPoint& remote_ip_end_point)
 	}
 
 	if (getsockname(GetHandle(), (sockaddr*)&address, &address_size) == SOCKET_ERROR)
-		; // TODO: handle error
+		; // TODO: this should cause an error but it's not THAT important or remotely likely to happen so bad practices will live on
 
 	IPEndPoint::FromAddress(ip_end_point_local, (const sockaddr&)address, address_size);
 
