@@ -8,8 +8,23 @@
 	#define INVALID_THREAD_HANDLE NULL
 #endif
 
+void FIO::Thread::OpenCurrent(Thread& thread)
+{
+	if (thread.IsOpen())
+		thread.Close();
+
+	thread.is_open    = true;
+	thread.is_running = true;
+#if defined(FIO_LINUX)
+	thread.handle     = pthread_self();
+#elif defined(FIO_WIN32)
+	thread.handle     = GetCurrentThread();
+#endif
+}
+
 FIO::Thread::Thread()
-	: is_running(false),
+	: is_open(false),
+	is_running(false),
 	error(0),
 	handle(INVALID_THREAD_HANDLE)
 {
@@ -41,6 +56,24 @@ bool FIO::Thread::Join()
 	}
 
 	return true;
+}
+
+void FIO::Thread::Close()
+{
+	if (IsOpen())
+	{
+#if defined(FIO_LINUX)
+
+#elif defined(FIO_WIN32)
+		CloseHandle(GetHandle());
+#endif
+
+		error      = 0;
+		handle     = INVALID_THREAD_HANDLE;
+
+		is_open    = false;
+		is_running = false;
+	}
 }
 
 bool FIO::Thread::Start(Main&& main)
@@ -99,11 +132,8 @@ void*        FIO::Thread::Detour(void* param)
 {
 	auto thread = (Thread*)param;
 
-	thread->main();
-
-	thread->error      = 0;
-	thread->handle     = INVALID_THREAD_HANDLE;
-	thread->is_running = false;
+	thread->main(*thread);
+	thread->Close();
 
 	return nullptr;
 }
@@ -112,13 +142,8 @@ DWORD WINAPI FIO::Thread::Detour(LPVOID param)
 {
 	auto thread = (Thread*)param;
 
-	thread->main();
-
-	CloseHandle(thread->GetHandle());
-
-	thread->error      = 0;
-	thread->handle     = INVALID_THREAD_HANDLE;
-	thread->is_running = false;
+	thread->main(*thread);
+	thread->Close();
 
 	return 0;
 }

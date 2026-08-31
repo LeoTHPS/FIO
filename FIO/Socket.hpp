@@ -266,11 +266,11 @@ namespace FIO
 		int  ReceiveFrom(void* buffer, size_t size, ReceiveFromCallback&& callback);
 
 	private:
-		void OnAccept(ThreadPool::IOContext& io, size_t number_of_bytes_transferred);
-		void OnConnect(ThreadPool::IOContext& io, size_t number_of_bytes_transferred);
-		void OnSend(ThreadPool::IOContext& io, size_t number_of_bytes_transferred);
-		void OnSendTo(ThreadPool::IOContext& io, size_t number_of_bytes_transferred);
-		void OnReceive(ThreadPool::IOContext& io, size_t number_of_bytes_transferred);
-		void OnReceiveFrom(ThreadPool::IOContext& io, size_t number_of_bytes_transferred);
+		void OnAccept(ThreadPool& pool, ThreadPool::IOContext& io, size_t number_of_bytes_transferred);
+		void OnConnect(ThreadPool& pool, ThreadPool::IOContext& io, size_t number_of_bytes_transferred);
+		void OnSend(ThreadPool& pool, ThreadPool::IOContext& io, size_t number_of_bytes_transferred);
+		void OnSendTo(ThreadPool& pool, ThreadPool::IOContext& io, size_t number_of_bytes_transferred);
+		void OnReceive(ThreadPool& pool, ThreadPool::IOContext& io, size_t number_of_bytes_transferred);
+		void OnReceiveFrom(ThreadPool& pool, ThreadPool::IOContext& io, size_t number_of_bytes_transferred);
 	};
 }

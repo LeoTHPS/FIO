@@ -12,9 +12,10 @@ namespace FIO
 	class Thread
 	{
 	public:
-		typedef std::function<void()> Main;
+		typedef std::function<void(Thread& thread)> Main;
 
 	private:
+		bool       is_open;
 		bool       is_running;
 
 		Main       main;
@@ -30,9 +31,16 @@ namespace FIO
 		Thread(const Thread&) = delete;
 
 	public:
+		static void OpenCurrent(Thread& thread);
+
 		Thread();
 
 		virtual ~Thread();
+
+		constexpr bool IsOpen() const
+		{
+			return is_open;
+		}
 
 		constexpr bool IsRunning() const
 		{
@@ -50,6 +58,8 @@ namespace FIO
 		}
 
 		bool Join();
+
+		void Close();
 
 		bool Start(Main&& main);
 		bool Terminate();

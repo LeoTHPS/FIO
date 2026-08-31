@@ -21,8 +21,8 @@ namespace FIO
 	public:
 		struct IOContext;
 
-		typedef std::function<void()>                                                       Function;
-		typedef std::function<void(IOContext& context, size_t number_of_bytes_transferred)> IOCallback;
+		typedef std::function<void(ThreadPool& pool)>                                                         Function;
+		typedef std::function<void(ThreadPool& pool, IOContext& context, size_t number_of_bytes_transferred)> IOCallback;
 
 		struct IOContext
 		{
@@ -135,9 +135,9 @@ namespace FIO
 #endif
 
 	private:
-		void Thread_Main();
+		void Thread_Main(Thread& thread);
 #if defined(FIO_WIN32)
-		bool Thread_HandleIOCP(const OVERLAPPED_ENTRY& entry);
+		bool Thread_HandleIOCP(Thread& thread, const OVERLAPPED_ENTRY& entry);
 #endif
 	};
 }

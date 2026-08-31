@@ -546,7 +546,7 @@ bool FIO::File::Read(void* buffer, size_t size, ReadCallback&& callback)
 #elif defined(FIO_WIN32)
 	auto context = new IOContext_Read
 	{
-		.IO       = { .Callback = std::bind(&File::OnRead, this, std::placeholders::_1, std::placeholders::_2) },
+		.IO       = { .Callback = std::bind(&File::OnRead, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3) },
 		.Buffer   = { .Size = size, .Buffer = buffer },
 		.Callback = std::move(callback)
 	};
@@ -622,7 +622,7 @@ bool FIO::File::Write(const void* buffer, size_t size, WriteCallback&& callback)
 #elif defined(FIO_WIN32)
 	auto context = new IOContext_Write
 	{
-		.IO       = { .Callback = std::bind(&File::OnWrite, this, std::placeholders::_1, std::placeholders::_2) },
+		.IO       = { .Callback = std::bind(&File::OnWrite, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3) },
 		.Buffer   = { .Size = size, .Buffer = buffer },
 		.Callback = std::move(callback)
 	};
@@ -717,7 +717,7 @@ void     FIO::File::Position_IncrementAsync(int type, size_t value)
 	}
 }
 
-void FIO::File::OnRead(ThreadPool::IOContext& io, size_t number_of_bytes_transferred)
+void FIO::File::OnRead(ThreadPool& pool, ThreadPool::IOContext& io, size_t number_of_bytes_transferred)
 {
 	Position_IncrementAsync(POSITION_TYPE_READ, number_of_bytes_transferred);
 
@@ -735,7 +735,7 @@ void FIO::File::OnRead(ThreadPool::IOContext& io, size_t number_of_bytes_transfe
 
 	delete context;
 }
-void FIO::File::OnWrite(ThreadPool::IOContext& io, size_t number_of_bytes_transferred)
+void FIO::File::OnWrite(ThreadPool& pool, ThreadPool::IOContext& io, size_t number_of_bytes_transferred)
 {
 	Position_IncrementAsync(POSITION_TYPE_WRITE, number_of_bytes_transferred);
 

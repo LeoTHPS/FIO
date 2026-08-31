@@ -231,7 +231,7 @@ namespace FIO
 		void     Position_IncrementAsync(int type, size_t value);
 
 	private:
-		void OnRead(ThreadPool::IOContext& io, size_t number_of_bytes_transferred);
-		void OnWrite(ThreadPool::IOContext& io, size_t number_of_bytes_transferred);
+		void OnRead(ThreadPool& pool, ThreadPool::IOContext& io, size_t number_of_bytes_transferred);
+		void OnWrite(ThreadPool& pool, ThreadPool::IOContext& io, size_t number_of_bytes_transferred);
 	};
 }

@@ -1,5 +1,6 @@
 #include "Endian.hpp"
 #include "Socket.hpp"
+#include "Thread.hpp"
 #include "ThreadPool.hpp"
 
 #include <limits>
@@ -245,7 +246,7 @@ int  FIO::Socket::Accept(Socket& socket, AcceptCallback&& callback)
 
 	auto context = new IOContext_Accept
 	{
-		.IO           = { .Callback = std::bind(&Socket::OnAccept, this, std::placeholders::_1, std::placeholders::_2) },
+		.IO           = { .Callback = std::bind(&Socket::OnAccept, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3) },
 		.Client       = &socket,
 		.ClientIsOpen = socket_is_open,
 		.Callback     = std::move(callback)
@@ -359,7 +360,7 @@ int  FIO::Socket::Connect(const IPEndPoint& remote_ip_end_point, ConnectCallback
 
 	auto context = new IOContext_Connect
 	{
-		.IO       = { .Callback = std::bind(&Socket::OnConnect, this, std::placeholders::_1, std::placeholders::_2) },
+		.IO       = { .Callback = std::bind(&Socket::OnConnect, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3) },
 		.Callback = std::move(callback)
 	};
 
@@ -387,7 +388,7 @@ int  FIO::Socket::Connect(const IPEndPoint& remote_ip_end_point, ConnectCallback
 		return 0;
 	}
 
-	OnConnect(context->IO, context->NumBytesSent);
+	OnConnect(*thread_pool, context->IO, context->NumBytesSent);
 #endif
 
 	return 1;
@@ -464,7 +465,7 @@ int  FIO::Socket::Send(const void* buffer, size_t size, SendCallback&& callback)
 #elif defined(FIO_WIN32)
 	auto context = new IOContext_Send
 	{
-		.IO       = { .Callback = std::bind(&Socket::OnSend, this, std::placeholders::_1, std::placeholders::_2) },
+		.IO       = { .Callback = std::bind(&Socket::OnSend, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3) },
 		.Buffer   = { .len = (u_long)size, .buf = (char*)buffer },
 		.Callback = std::move(callback)
 	};
@@ -542,7 +543,7 @@ int  FIO::Socket::SendTo(const void* buffer, size_t size, const IPEndPoint& remo
 #elif defined(FIO_WIN32)
 	auto context = new IOContext_SendTo
 	{
-		.IO             = { .Callback = std::bind(&Socket::OnSendTo, this, std::placeholders::_1, std::placeholders::_2) },
+		.IO             = { .Callback = std::bind(&Socket::OnSendTo, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3) },
 		.Buffer         = { .len = (u_long)size, .buf = (char*)buffer },
 		.Callback       = std::move(callback),
 		.RemoteEndPoint = remote_ip_end_point
@@ -612,7 +613,7 @@ int  FIO::Socket::Receive(void* buffer, size_t size, ReceiveCallback&& callback)
 #elif defined(FIO_WIN32)
 	auto context = new IOContext_Receive
 	{
-		.IO       = { .Callback = std::bind(&Socket::OnReceive, this, std::placeholders::_1, std::placeholders::_2) },
+		.IO       = { .Callback = std::bind(&Socket::OnReceive, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3) },
 		.Flags    = 0,
 		.Buffer   = { .len = (u_long)size, .buf = (char*)buffer },
 		.Callback = std::move(callback)
@@ -687,7 +688,7 @@ int  FIO::Socket::ReceiveFrom(void* buffer, size_t size, ReceiveFromCallback&& c
 #elif defined(FIO_WIN32)
 	auto context = new IOContext_ReceiveFrom
 	{
-		.IO             = { .Callback = std::bind(&Socket::OnReceiveFrom, this, std::placeholders::_1, std::placeholders::_2) },
+		.IO             = { .Callback = std::bind(&Socket::OnReceiveFrom, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3) },
 		.Flags          = 0,
 		.Buffer         = { .len = (u_long)size, .buf = (char*)buffer },
 		.Callback       = std::move(callback),
@@ -722,7 +723,7 @@ int  FIO::Socket::ReceiveFrom(void* buffer, size_t size, ReceiveFromCallback&& c
 
 #define fio_socket_get_io_context(type, context) (type*)&context
 #define fio_socket_remove_io_context(context)    thread_pool_io.Remove(context->IO); delete context
-void FIO::Socket::OnAccept(ThreadPool::IOContext& io, size_t number_of_bytes_transferred)
+void FIO::Socket::OnAccept(ThreadPool& pool, ThreadPool::IOContext& io, size_t number_of_bytes_transferred)
 {
 	auto accept = fio_socket_get_io_context(IOContext_Accept, io);
 
@@ -783,7 +784,7 @@ void FIO::Socket::OnAccept(ThreadPool::IOContext& io, size_t number_of_bytes_tra
 
 	fio_socket_remove_io_context(accept);
 }
-void FIO::Socket::OnConnect(ThreadPool::IOContext& io, size_t number_of_bytes_transferred)
+void FIO::Socket::OnConnect(ThreadPool& pool, ThreadPool::IOContext& io, size_t number_of_bytes_transferred)
 {
 	auto connect = fio_socket_get_io_context(IOContext_Connect, io);
 
@@ -820,7 +821,7 @@ void FIO::Socket::OnConnect(ThreadPool::IOContext& io, size_t number_of_bytes_tr
 
 	fio_socket_remove_io_context(connect);
 }
-void FIO::Socket::OnSend(ThreadPool::IOContext& io, size_t number_of_bytes_transferred)
+void FIO::Socket::OnSend(ThreadPool& pool, ThreadPool::IOContext& io, size_t number_of_bytes_transferred)
 {
 	auto send = fio_socket_get_io_context(IOContext_Send, io);
 
@@ -835,7 +836,7 @@ void FIO::Socket::OnSend(ThreadPool::IOContext& io, size_t number_of_bytes_trans
 
 	fio_socket_remove_io_context(send);
 }
-void FIO::Socket::OnSendTo(ThreadPool::IOContext& io, size_t number_of_bytes_transferred)
+void FIO::Socket::OnSendTo(ThreadPool& pool, ThreadPool::IOContext& io, size_t number_of_bytes_transferred)
 {
 	auto send_to = fio_socket_get_io_context(IOContext_SendTo, io);
 
@@ -850,7 +851,7 @@ void FIO::Socket::OnSendTo(ThreadPool::IOContext& io, size_t number_of_bytes_tra
 
 	fio_socket_remove_io_context(send_to);
 }
-void FIO::Socket::OnReceive(ThreadPool::IOContext& io, size_t number_of_bytes_transferred)
+void FIO::Socket::OnReceive(ThreadPool& pool, ThreadPool::IOContext& io, size_t number_of_bytes_transferred)
 {
 	auto receive = fio_socket_get_io_context(IOContext_Receive, io);
 
@@ -865,7 +866,7 @@ void FIO::Socket::OnReceive(ThreadPool::IOContext& io, size_t number_of_bytes_tr
 
 	fio_socket_remove_io_context(receive);
 }
-void FIO::Socket::OnReceiveFrom(ThreadPool::IOContext& io, size_t number_of_bytes_transferred)
+void FIO::Socket::OnReceiveFrom(ThreadPool& pool, ThreadPool::IOContext& io, size_t number_of_bytes_transferred)
 {
 	auto receive_from = fio_socket_get_io_context(IOContext_ReceiveFrom, io);
 

@@ -149,7 +149,7 @@ bool FIO::ThreadPool::Start()
 	threads_count = GetSize();
 
 	for (auto it = threads.begin(); it != threads.end(); ++it)
-		if (!(*it)->Start(std::bind(&ThreadPool::Thread_Main, this)))
+		if (!(*it)->Start(std::bind(&ThreadPool::Thread_Main, this, std::placeholders::_1)))
 		{
 			Shutdown();
 
@@ -184,7 +184,7 @@ bool FIO::ThreadPool::Associate(HANDLE handle)
 	return true;
 }
 #endif
-void FIO::ThreadPool::Thread_Main()
+void FIO::ThreadPool::Thread_Main(Thread& thread)
 {
 #if defined(FIO_LINUX)
 	// TODO: implement linux
@@ -205,7 +205,7 @@ void FIO::ThreadPool::Thread_Main()
 
 			break;
 		}
-	} while (Thread_HandleIOCP(entry));
+	} while (Thread_HandleIOCP(thread, entry));
 #endif
 
 	if (threads_count.fetch_sub(1) == 1)
@@ -222,19 +222,19 @@ void FIO::ThreadPool::Thread_Main()
 	}
 }
 #if defined(FIO_WIN32)
-bool FIO::ThreadPool::Thread_HandleIOCP(const OVERLAPPED_ENTRY& entry)
+bool FIO::ThreadPool::Thread_HandleIOCP(Thread& thread, const OVERLAPPED_ENTRY& entry)
 {
 	switch (entry.lpCompletionKey)
 	{
 		case IOCP_REQUEST_KEY_IO:
 			if (auto io = (IOContext*)entry.lpOverlapped)
-				io->Callback(*io, entry.dwNumberOfBytesTransferred);
+				io->Callback(*this, *io, entry.dwNumberOfBytesTransferred);
 			break;
 
 		case IOCP_REQUEST_KEY_FUNC:
 			if (auto function = (Function*)entry.lpOverlapped)
 			{
-				(*function)();
+				(*function)(*this);
 
 				delete function;
 			}
@@ -242,7 +242,7 @@ bool FIO::ThreadPool::Thread_HandleIOCP(const OVERLAPPED_ENTRY& entry)
 
 		case IOCP_REQUEST_KEY_FUNC_PTR:
 			if (auto function = (const Function*)entry.lpOverlapped)
-				(*function)();
+				(*function)(*this);
 			break;
 
 		case IOCP_REQUEST_KEY_SHUTDOWN:
