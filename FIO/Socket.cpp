@@ -230,9 +230,8 @@ int  FIO::Socket::Accept(Socket& socket)
 	socket.is_open        = true;
 	socket.is_connected   = true;
 
-	if (!IPEndPoint::FromAddress(socket.ip_end_point_local,  (const sockaddr&)address[0], address_size) ||
-		!IPEndPoint::FromAddress(socket.ip_end_point_remote, (const sockaddr&)address[1], address_size))
-		; // TODO: error
+	IPEndPoint::FromAddress(socket.ip_end_point_local,  (const sockaddr&)address[0], address_size);
+	IPEndPoint::FromAddress(socket.ip_end_point_remote, (const sockaddr&)address[1], address_size);
 
 	return 1;
 }
@@ -329,10 +328,9 @@ bool FIO::Socket::Connect(const IPEndPoint& remote_ip_end_point)
 	}
 
 	if (getsockname(GetHandle(), (sockaddr*)&address, &address_size) == SOCKET_ERROR)
-		; // TODO: error
+		; // TODO: handle error
 
-	if (!IPEndPoint::FromAddress(ip_end_point_local, (const sockaddr&)address, address_size))
-		; // TODO: error
+	IPEndPoint::FromAddress(ip_end_point_local, (const sockaddr&)address, address_size);
 
 	error               = 0;
 	ip_end_point_remote = remote_ip_end_point;
@@ -699,8 +697,7 @@ bool FIO::Socket::ReceiveFrom(void* buffer, size_t size, IPEndPoint& remote_ip_e
 		return false;
 	}
 
-	if (!IPEndPoint::FromAddress(remote_ip_end_point, (const sockaddr&)address, address_size))
-		; // TODO: error
+	IPEndPoint::FromAddress(remote_ip_end_point, (const sockaddr&)address, address_size);
 
 	error                    = 0;
 	number_of_bytes_received = num_bytes_received;
@@ -797,9 +794,8 @@ void FIO::Socket::OnAccept(ThreadPool& pool, ThreadPool::IOContext& io, size_t n
 		}
 		else
 		{
-			if (!IPEndPoint::FromAddress(accept->Client->ip_end_point_local,  (const sockaddr&)address[0], address_size[0]) ||
-				!IPEndPoint::FromAddress(accept->Client->ip_end_point_remote, (const sockaddr&)address[1], address_size[1]))
-				; // TODO: error
+			IPEndPoint::FromAddress(accept->Client->ip_end_point_local,  (const sockaddr&)address[0], address_size[0]);
+			IPEndPoint::FromAddress(accept->Client->ip_end_point_remote, (const sockaddr&)address[1], address_size[1]);
 
 			accept->Client->is_open      = true;
 			accept->Client->is_connected = true;
@@ -834,9 +830,8 @@ void FIO::Socket::OnConnect(ThreadPool& pool, ThreadPool::IOContext& io, size_t 
 		}
 		else
 		{
-			if (!IPEndPoint::FromAddress(this->ip_end_point_local,  (const sockaddr&)address[0], address_size[0]) ||
-				!IPEndPoint::FromAddress(this->ip_end_point_remote, (const sockaddr&)address[1], address_size[1]))
-				; // TODO: error
+			IPEndPoint::FromAddress(this->ip_end_point_local,  (const sockaddr&)address[0], address_size[0]);
+			IPEndPoint::FromAddress(this->ip_end_point_remote, (const sockaddr&)address[1], address_size[1]);
 
 			this->is_connected = true;
 		}
@@ -894,9 +889,7 @@ void FIO::Socket::OnReceiveFrom(ThreadPool& pool, ThreadPool::IOContext& io, siz
 	auto receive_from = fio_socket_get_io_context(IOContext_ReceiveFrom, io);
 
 	IPEndPoint remote_ip_end_point;
-
-	if (!IPEndPoint::FromAddress(remote_ip_end_point, (const sockaddr&)receive_from->RemoteEndPoint.Address, receive_from->RemoteEndPoint.Size))
-		; // TODO: error
+	IPEndPoint::FromAddress(remote_ip_end_point, (const sockaddr&)receive_from->RemoteEndPoint.Address, receive_from->RemoteEndPoint.Size);
 
 #if defined(FIO_LINUX)
 	// TODO: implement linux
