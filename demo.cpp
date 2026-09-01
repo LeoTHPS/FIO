@@ -400,7 +400,7 @@ class demo_byte_buffer
 
 public:
 	demo_byte_buffer()
-		: buffer(FIO::ByteBuffer::Open(memory, sizeof(memory), FIO::Endian::MACHINE))
+		: buffer(FIO::ByteBuffer::Open(memory, sizeof(memory), FIO::Endian::BIG))
 	{
 		memset(memory, 0, sizeof(memory));
 	}
@@ -415,9 +415,13 @@ public:
 		print(L"buffer.Write(\"{}\") -> {}", wstr, buffer.Write(wstr));
 		print(L"buffer.Read(\"{}\") -> {}", wstr, buffer.Read(wstr));
 
-		uint32_t uint = 0x12345678;
-		print("buffer.Write({}) -> {}", uint, buffer.Write(uint));
-		print("buffer.Read({}) -> {}", uint, buffer.Read(uint));
+		uint32_t uint32 = 0x12345678;
+		print("buffer.Write({}) -> {}", uint32, buffer.Write(uint32));
+		print("buffer.Read({}) -> {}", uint32, buffer.Read(uint32));
+
+		uint64_t uint64 = 0x1234567812345678;
+		print("buffer.Write({}) -> {}", uint64, buffer.Write(uint64));
+		print("buffer.Read({}) -> {}", uint64, buffer.Read(uint64));
 	}
 };
 
@@ -475,7 +479,7 @@ int main(int argc, char* argv[])
 
 	// demo_directory().run();
 
-	// demo_byte_buffer().run();
+	demo_byte_buffer().run();
 
 	// demo_mpsc_queue(THREAD_COUNT).run();
 
