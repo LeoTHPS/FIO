@@ -431,12 +431,14 @@ public:
 		print("buffer.Write({}) -> {}", uint64, buffer.Write(uint64));
 		print("buffer.Read({}) -> {}", uint64, buffer.Read(uint64));
 
+#ifdef __SIZEOF_INT128__
 		__uint128_t uint128 = ((__uint128_t)uint64 << 64) | uint64;
 		print("buffer.Write({}) -> {}", uint128, buffer.Write(uint128));
 		print("buffer.Read({}) -> {}", uint128, buffer.Read(uint128));
 
 		print("buffer.WritePacked({}) -> {}", uint128, buffer.WritePacked(uint128));
 		print("buffer.ReadPacked({}) -> {}", uint128, buffer.ReadPacked(uint128));
+#endif
 
 		enum class foo { no, bar } fuu = foo::bar;
 		print("buffer.WritePacked({}) -> {}", (int)fuu, buffer.WritePacked(fuu));
