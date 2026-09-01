@@ -66,7 +66,7 @@ namespace FIO
 			return buffer_write_position;
 		}
 
-		uint32_t       GetNextBlockSize() const;
+		uint64_t       GetNextBlockSize() const;
 
 		void SetEndian(int value);
 
@@ -121,13 +121,17 @@ namespace FIO
 		bool Write(std::wstring_view value);
 		bool Write(const void* buffer, size_t size);
 
-		bool PeekBlock(void* buffer, uint32_t size) const;
+		bool PeekBlock(void* buffer, size_t size) const;
 
-		bool ReadBlock(void* buffer, uint32_t size);
+		bool ReadBlock(void* buffer, size_t size);
 
-		bool WriteBlock(const void* buffer, uint32_t size);
+		bool WriteBlock(const void* buffer, size_t size);
 
 		ByteBuffer& operator = (ByteBuffer&& buffer);
 		ByteBuffer& operator = (const ByteBuffer& buffer);
+
+	private:
+		bool GetNextBlockSize(uint64_t& size, uint8_t& width) const;
+		bool SetNextBlockSize(uint64_t size, uint8_t& width);
 	};
 }
