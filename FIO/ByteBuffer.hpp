@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <cstdint>
+#include <utility>
 #include <type_traits>
 
 #include "Endian.hpp"
@@ -9,6 +10,10 @@ namespace FIO
 {
 	class ByteBuffer
 	{
+		template<typename T>
+		static constexpr bool is_integer_v         = std::is_integral_v<T> && !std::is_enum_v<T> && !std::is_floating_point_v<T>;
+		template<typename T>
+		static constexpr bool is_enum_or_decimal_v = (std::is_enum_v<T> || std::is_floating_point_v<T>) && !std::is_integral_v<T>;
 		template<typename T>
 		static constexpr bool is_enum_or_numeric_v = std::is_enum_v<T> || std::is_integral_v<T> || std::is_floating_point_v<T>;
 
@@ -127,27 +132,29 @@ namespace FIO
 		bool Write(const void* buffer, size_t size);
 
 		bool ReadBlock(void* buffer, size_t size, size_t& number_of_bytes_read);
+
 		bool WriteBlock(const void* buffer, size_t size);
 
 		template<typename T>
-		requires(is_enum_or_numeric_v<T>)
+		requires(is_integer_v<T>)
 		bool ReadPacked(T& value)
 		{
 			if (!buffer_read)
 				return false;
 
+			T    v        = 0;
 			auto offset   = GetReadPosition();
 			auto capacity = GetCapacity();
 
-			for (uint64_t i = offset, j = 0, l = 0; (j < (sizeof(T) * 8)) && (i < capacity); ++i, j += 7)
+			for (size_t i = offset, j = 0; (j < (sizeof(T) * 8)) && (i < capacity); ++i, j += 7)
 			{
 				uint8_t byte = buffer_read[i];
 
-				l |= (uint64_t)(byte & 0x7F) << j;
+				v |= (T)(byte & 0x7F) << j;
 
 				if ((byte & 0x80) == 0)
 				{
-					value                = l;
+					value                = v;
 					buffer_read_position = i + 1;
 
 					return true;
@@ -157,7 +164,22 @@ namespace FIO
 			return false;
 		}
 		template<typename T>
-		requires(is_enum_or_numeric_v<T>)
+		requires(is_enum_or_decimal_v<T>)
+		bool ReadPacked(T& value)
+		{
+			if      constexpr (sizeof(T) == sizeof(uint8_t))     return ReadPacked((uint8_t&)value);
+			else if constexpr (sizeof(T) == sizeof(uint16_t))    return ReadPacked((uint16_t&)value);
+			else if constexpr (sizeof(T) == sizeof(uint32_t))    return ReadPacked((uint32_t&)value);
+			else if constexpr (sizeof(T) == sizeof(uint64_t))    return ReadPacked((uint64_t&)value);
+#ifdef __SIZEOF_INT128__
+			else if constexpr (sizeof(T) == sizeof(__uint128_t)) return ReadPacked((__uint128_t&)value);
+#endif
+
+			return false;
+		}
+
+		template<typename T>
+		requires(is_integer_v<T>)
 		bool WritePacked(T value)
 		{
 			if (!buffer_write)
@@ -166,7 +188,7 @@ namespace FIO
 			auto offset   = GetReadPosition();
 			auto capacity = GetCapacity();
 
-			for (uint64_t i = offset, j = 0; i < capacity; ++i, j += 7)
+			for (size_t i = offset; i < capacity; ++i)
 			{
 				uint8_t byte = value & 0x7F;
 
@@ -182,6 +204,20 @@ namespace FIO
 					return true;
 				}
 			}
+
+			return false;
+		}
+		template<typename T>
+		requires(is_enum_or_decimal_v<T>)
+		bool WritePacked(T value)
+		{
+			if      constexpr (sizeof(T) == sizeof(uint8_t))     return WritePacked((uint8_t)value);
+			else if constexpr (sizeof(T) == sizeof(uint16_t))    return WritePacked((uint16_t)value);
+			else if constexpr (sizeof(T) == sizeof(uint32_t))    return WritePacked((uint32_t)value);
+			else if constexpr (sizeof(T) == sizeof(uint64_t))    return WritePacked((uint64_t)value);
+#ifdef __SIZEOF_INT128__
+			else if constexpr (sizeof(T) == sizeof(__uint128_t)) return WritePacked((__uint128_t)value);
+#endif
 
 			return false;
 		}

@@ -412,16 +412,35 @@ public:
 		print("buffer.Read(\"{}\") -> {}", str, buffer.Read(str));
 
 		std::wstring wstr(L"Hello world");
-		print(L"buffer.Write(\"{}\") -> {}", wstr, buffer.Write(wstr));
-		print(L"buffer.Read(\"{}\") -> {}", wstr, buffer.Read(wstr));
+		print(L"buffer.Write(L\"{}\") -> {}", wstr, buffer.Write(wstr));
+		print(L"buffer.Read(L\"{}\") -> {}", wstr, buffer.Read(wstr));
 
-		uint32_t uint32 = 0x12345678;
+		uint8_t uint8 = 0xFF;
+		print("buffer.Write({}) -> {}", uint8, buffer.Write(uint8));
+		print("buffer.Read({}) -> {}", uint8, buffer.Read(uint8));
+
+		uint16_t uint16 = ((uint16_t)uint8 << 8) | uint8;
+		print("buffer.Write({}) -> {}", uint16, buffer.Write(uint16));
+		print("buffer.Read({}) -> {}", uint16, buffer.Read(uint16));
+
+		uint32_t uint32 = ((uint32_t)uint16 << 16) | uint16;
 		print("buffer.Write({}) -> {}", uint32, buffer.Write(uint32));
 		print("buffer.Read({}) -> {}", uint32, buffer.Read(uint32));
 
-		uint64_t uint64 = 0x1234567812345678;
+		uint64_t uint64 = ((uint64_t)uint32 << 32) | uint32;
 		print("buffer.Write({}) -> {}", uint64, buffer.Write(uint64));
 		print("buffer.Read({}) -> {}", uint64, buffer.Read(uint64));
+
+		__uint128_t uint128 = ((__uint128_t)uint64 << 64) | uint64;
+		print("buffer.Write({}) -> {}", uint128, buffer.Write(uint128));
+		print("buffer.Read({}) -> {}", uint128, buffer.Read(uint128));
+
+		print("buffer.WritePacked({}) -> {}", uint128, buffer.WritePacked(uint128));
+		print("buffer.ReadPacked({}) -> {}", uint128, buffer.ReadPacked(uint128));
+
+		enum class foo { no, bar } fuu = foo::bar;
+		print("buffer.WritePacked({}) -> {}", (int)fuu, buffer.WritePacked(fuu));
+		print("buffer.ReadPacked({}) -> {}", (int)fuu, buffer.ReadPacked(fuu));
 	}
 };
 
