@@ -93,14 +93,6 @@ FIO::ByteBuffer::~ByteBuffer()
 		delete[] buffer;
 }
 
-uint64_t FIO::ByteBuffer::GetNextBlockSize() const
-{
-	uint64_t block_size;
-	uint8_t  block_size_width;
-
-	return GetNextBlockSize(block_size, block_size_width) ? block_size : 0;
-}
-
 void FIO::ByteBuffer::SetEndian(int value)
 {
 	buffer_endian = value;
@@ -150,62 +142,6 @@ void FIO::ByteBuffer::SetWritePosition(size_t value)
 	buffer_write_position = value;
 }
 
-bool FIO::ByteBuffer::Peek(std::string& value) const
-{
-	if (auto size = GetNextBlockSize())
-	{
-		value.resize(size / sizeof(char));
-
-		return PeekBlock(value.data(), size);
-	}
-
-	return false;
-}
-bool FIO::ByteBuffer::Peek(std::wstring& value) const
-{
-	if (auto size = GetNextBlockSize())
-	{
-		value.resize(size / sizeof(wchar_t));
-
-		return PeekBlock(value.data(), size);
-	}
-
-	return false;
-}
-bool FIO::ByteBuffer::Peek(void* buffer, size_t size) const
-{
-	auto offset = GetReadPosition();
-
-	if (!buffer_read || ((offset + size) > GetCapacity()))
-		return false;
-
-	memcpy(buffer, buffer_read + offset, size);
-
-	return true;
-}
-
-bool FIO::ByteBuffer::Read(std::string& value)
-{
-	if (auto size = GetNextBlockSize())
-	{
-		value.resize(size / sizeof(char));
-
-		return ReadBlock(value.data(), size);
-	}
-
-	return false;
-}
-bool FIO::ByteBuffer::Read(std::wstring& value)
-{
-	if (auto size = GetNextBlockSize())
-	{
-		value.resize(size / sizeof(wchar_t));
-
-		return ReadBlock(value.data(), size);
-	}
-
-	return false;
-}
 bool FIO::ByteBuffer::Read(void* buffer, size_t size)
 {
 	auto offset = GetReadPosition();
@@ -218,19 +154,6 @@ bool FIO::ByteBuffer::Read(void* buffer, size_t size)
 	buffer_read_position += size;
 
 	return true;
-}
-
-bool FIO::ByteBuffer::Write(std::string_view value)
-{
-	auto size = value.length() * sizeof(char);
-
-	return (size <= UINT32_MAX) && WriteBlock(value.data(), size);
-}
-bool FIO::ByteBuffer::Write(std::wstring_view value)
-{
-	auto size = value.length() * sizeof(wchar_t);
-
-	return (size <= UINT32_MAX) && WriteBlock(value.data(), size);
 }
 bool FIO::ByteBuffer::Write(const void* buffer, size_t size)
 {
@@ -246,58 +169,39 @@ bool FIO::ByteBuffer::Write(const void* buffer, size_t size)
 	return true;
 }
 
-bool FIO::ByteBuffer::PeekBlock(void* buffer, size_t size) const
+bool FIO::ByteBuffer::ReadBlock(void* buffer, size_t size, size_t& number_of_bytes_read)
 {
-	auto     offset = GetReadPosition();
-	uint64_t block_size;
-	uint8_t  block_size_width;
+	auto     offset     = GetReadPosition();
+	uint64_t block_size = 0;
 
-	if (!buffer_read || ((offset + block_size_width + block_size) > GetCapacity()) || (size < block_size))
-		return false;
+	if (ReadPacked(block_size))
+	{
+		if (block_size <= size)
+			if (Read(buffer, (size_t)block_size))
+			{
+				number_of_bytes_read = block_size;
 
-	if (!GetNextBlockSize(block_size, block_size_width))
-		return false;
+				return true;
+			}
 
-	memcpy(buffer, buffer_read + offset + block_size_width, block_size);
+		SetReadPosition(offset);
+	}
 
-	return true;
+	return false;
 }
-
-bool FIO::ByteBuffer::ReadBlock(void* buffer, size_t size)
-{
-	auto     offset = GetReadPosition();
-	uint64_t block_size;
-	uint8_t  block_size_width;
-
-	if (!GetNextBlockSize(block_size, block_size_width))
-		return false;
-
-	if (!buffer_read || ((offset + block_size_width + block_size) > GetCapacity()) || (size < block_size))
-		return false;
-
-	memcpy(buffer, buffer_read + offset + block_size_width, block_size);
-
-	buffer_read_position += block_size_width + block_size;
-
-	return true;
-}
-
 bool FIO::ByteBuffer::WriteBlock(const void* buffer, size_t size)
 {
-	auto    offset = GetWritePosition();
-	uint8_t block_size_width;
+	auto offset = GetWritePosition();
 
-	if (!SetNextBlockSize(size, block_size_width))
-		return false;
+	if (WritePacked((uint64_t)size))
+	{
+		if (Write(buffer, size))
+			return true;
 
-	if (!buffer_write || ((offset + block_size_width + size) > GetCapacity()))
-		return false;
+		SetWritePosition(offset);
+	}
 
-	memcpy(buffer_write + offset + block_size_width, buffer, size);
-
-	buffer_write_position += block_size_width + size;
-
-	return true;
+	return false;
 }
 
 FIO::ByteBuffer& FIO::ByteBuffer::operator = (ByteBuffer&& buffer)
@@ -343,80 +247,4 @@ FIO::ByteBuffer& FIO::ByteBuffer::operator = (const ByteBuffer& buffer)
 		memcpy(this->buffer, buffer.buffer, buffer.GetCapacity());
 
 	return *this;
-}
-
-bool FIO::ByteBuffer::GetNextBlockSize(uint64_t& size, uint8_t& width) const
-{
-	auto offset   = GetReadPosition();
-	auto capacity = GetCapacity();
-
-	if (!buffer_read || ((offset + sizeof(uint8_t)) > capacity))
-		return false;
-
-#define if_block_width(type, value) \
-	static_assert(value <= std::numeric_limits<type>::max()); \
-	if (buffer_read[offset] == value) \
-	{ \
-		if ((offset + sizeof(uint8_t) + value) > capacity) \
-			return false; \
-		\
-		size  = *((const type*)&buffer_read[offset + sizeof(uint8_t)]); \
-		width = sizeof(uint8_t) + value; \
-		\
-		if (GetEndian() != Endian::MACHINE) \
-			size = Endian::Flip(size); \
-		\
-		return true; \
-	}
-
-	if_block_width(uint8_t,  1);
-	if_block_width(uint16_t, 2);
-	if_block_width(uint32_t, 3);
-	if_block_width(uint32_t, 4);
-	if_block_width(uint64_t, 5);
-	if_block_width(uint64_t, 6);
-	if_block_width(uint64_t, 7);
-	if_block_width(uint64_t, 8);
-
-#undef if_block_width
-
-	return false;
-}
-bool FIO::ByteBuffer::SetNextBlockSize(uint64_t size, uint8_t& width)
-{
-	if (!buffer_write)
-		return false;
-
-	auto offset   = GetReadPosition();
-	auto capacity = GetCapacity();
-
-#define if_block_size(type, max_value) \
-	static_assert(max_value <= std::numeric_limits<type>::max()); \
-	if (size <= max_value) \
-	{ \
-		if ((offset + sizeof(uint8_t) + sizeof(type) + size) > capacity) \
-			return false; \
-		\
-		if (GetEndian() != Endian::MACHINE) \
-			size = Endian::Flip(size); \
-		\
-		width                                             = sizeof(uint8_t) + sizeof(type); \
-		buffer_write[offset]                              = sizeof(type); \
-		*((type*)&buffer_write[offset + sizeof(uint8_t)]) = (type)size; \
-		\
-		return true; \
-	}
-
-	if_block_size(uint8_t,  0xFF);
-	if_block_size(uint16_t, 0xFFFF);
-	if_block_size(uint32_t, 0xFFFFFF);
-	if_block_size(uint32_t, 0xFFFFFFFF);
-	if_block_size(uint64_t, 0xFFFFFFFFFF);
-	if_block_size(uint64_t, 0xFFFFFFFFFFFF);
-	if_block_size(uint64_t, 0xFFFFFFFFFFFFFF);
-	if_block_size(uint64_t, 0xFFFFFFFFFFFFFFFF);
-
-#undef if_block_size
-
-	return false;
 }

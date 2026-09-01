@@ -66,8 +66,6 @@ namespace FIO
 			return buffer_write_position;
 		}
 
-		uint64_t       GetNextBlockSize() const;
-
 		void SetEndian(int value);
 
 		void SetCapacity(size_t value);
@@ -75,22 +73,6 @@ namespace FIO
 		void SetReadPosition(size_t value);
 
 		void SetWritePosition(size_t value);
-
-		template<typename T>
-		requires(is_enum_or_numeric_v<T>)
-		bool Peek(T& value) const
-		{
-			if (!Peek(&value, sizeof(T)))
-				return false;
-
-			if (GetEndian() != Endian::MACHINE)
-				value = Endian::Flip(value);
-
-			return true;
-		}
-		bool Peek(std::string& value) const;
-		bool Peek(std::wstring& value) const;
-		bool Peek(void* buffer, size_t size) const;
 
 		template<typename T>
 		requires(is_enum_or_numeric_v<T>)
@@ -104,8 +86,23 @@ namespace FIO
 
 			return true;
 		}
-		bool Read(std::string& value);
-		bool Read(std::wstring& value);
+		template<typename T>
+		bool Read(std::basic_string<T>& value)
+		{
+			auto offset = GetReadPosition();
+
+			if (uint64_t size; ReadPacked(size))
+			{
+				value.resize((size_t)(size / sizeof(T)));
+
+				if (Read(value.data(), (size_t)size))
+					return true;
+
+				SetReadPosition(offset);
+			}
+
+			return false;
+		}
 		bool Read(void* buffer, size_t size);
 
 		template<typename T>
@@ -117,21 +114,79 @@ namespace FIO
 
 			return Write(&value, sizeof(T));
 		}
-		bool Write(std::string_view value);
-		bool Write(std::wstring_view value);
+		template<typename T>
+		bool Write(std::basic_string_view<T> value)
+		{
+			return WriteBlock(value.data(), value.length() * sizeof(T));
+		}
+		template<typename T>
+		bool Write(const std::basic_string<T>& value)
+		{
+			return WriteBlock(value.data(), value.length() * sizeof(T));
+		}
 		bool Write(const void* buffer, size_t size);
 
-		bool PeekBlock(void* buffer, size_t size) const;
-
-		bool ReadBlock(void* buffer, size_t size);
-
+		bool ReadBlock(void* buffer, size_t size, size_t& number_of_bytes_read);
 		bool WriteBlock(const void* buffer, size_t size);
+
+		template<typename T>
+		requires(is_enum_or_numeric_v<T>)
+		bool ReadPacked(T& value)
+		{
+			if (!buffer_read)
+				return false;
+
+			auto offset   = GetReadPosition();
+			auto capacity = GetCapacity();
+
+			for (uint64_t i = offset, j = 0, l = 0; (j < (sizeof(T) * 8)) && (i < capacity); ++i, j += 7)
+			{
+				uint8_t byte = buffer_read[i];
+
+				l |= (uint64_t)(byte & 0x7F) << j;
+
+				if ((byte & 0x80) == 0)
+				{
+					value                = l;
+					buffer_read_position = i + 1;
+
+					return true;
+				}
+			}
+
+			return false;
+		}
+		template<typename T>
+		requires(is_enum_or_numeric_v<T>)
+		bool WritePacked(T value)
+		{
+			if (!buffer_write)
+				return false;
+
+			auto offset   = GetReadPosition();
+			auto capacity = GetCapacity();
+
+			for (uint64_t i = offset, j = 0; i < capacity; ++i, j += 7)
+			{
+				uint8_t byte = value & 0x7F;
+
+				if (value >>= 7)
+					byte |= 0x80;
+
+				buffer_write[i] = byte;
+
+				if (value == 0)
+				{
+					buffer_write_position = i + 1;
+
+					return true;
+				}
+			}
+
+			return false;
+		}
 
 		ByteBuffer& operator = (ByteBuffer&& buffer);
 		ByteBuffer& operator = (const ByteBuffer& buffer);
-
-	private:
-		bool GetNextBlockSize(uint64_t& size, uint8_t& width) const;
-		bool SetNextBlockSize(uint64_t size, uint8_t& width);
 	};
 }
