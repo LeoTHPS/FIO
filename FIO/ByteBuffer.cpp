@@ -1,6 +1,5 @@
 #include "ByteBuffer.hpp"
 
-#include <limits>
 #include <cstring>
 
 FIO::ByteBuffer FIO::ByteBuffer::Copy(const void* buffer, size_t size, int endian)
