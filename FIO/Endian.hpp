@@ -11,11 +11,11 @@ namespace FIO
 		Endian() = delete;
 
 	public:
-		enum : uint16_t
+		enum
 		{
-			BIG     = 0x0000,
-			LITTLE  = 0x0001,
-			MACHINE = ((0x0001 & 0xFFFF) == 0x0001) ? LITTLE : BIG
+			BIG     = (int)std::endian::big,
+			LITTLE  = (int)std::endian::little,
+			MACHINE = (int)std::endian::native
 		};
 
 		template<typename T>
