@@ -10,13 +10,6 @@ namespace FIO
 {
 	class ByteBuffer
 	{
-		template<typename T>
-		static constexpr bool is_integer_v         = std::is_integral_v<T> && !std::is_enum_v<T> && !std::is_floating_point_v<T>;
-		template<typename T>
-		static constexpr bool is_enum_or_decimal_v = (std::is_enum_v<T> || std::is_floating_point_v<T>) && !std::is_integral_v<T>;
-		template<typename T>
-		static constexpr bool is_enum_or_numeric_v = std::is_enum_v<T> || std::is_integral_v<T> || std::is_floating_point_v<T>;
-
 		uint8_t*       buffer;
 		int            buffer_endian;
 		size_t         buffer_capacity;
@@ -80,7 +73,7 @@ namespace FIO
 		void SetWritePosition(size_t value);
 
 		template<typename T>
-		requires(is_enum_or_numeric_v<T>)
+		requires(std::is_enum_v<T> || std::is_integral_v<T> || std::is_floating_point_v<T>)
 		bool Read(T& value)
 		{
 			if (!Read(&value, sizeof(T)))
@@ -111,7 +104,7 @@ namespace FIO
 		bool Read(void* buffer, size_t size);
 
 		template<typename T>
-		requires(is_enum_or_numeric_v<T>)
+		requires(std::is_enum_v<T> || std::is_integral_v<T> || std::is_floating_point_v<T>)
 		bool Write(T value)
 		{
 			if (GetEndian() != Endian::MACHINE)
@@ -136,7 +129,7 @@ namespace FIO
 		bool WriteBlock(const void* buffer, size_t size);
 
 		template<typename T>
-		requires(is_integer_v<T>)
+		requires(std::is_integral_v<T>)
 		bool ReadPacked(T& value)
 		{
 			if (!buffer_read)
@@ -164,7 +157,7 @@ namespace FIO
 			return false;
 		}
 		template<typename T>
-		requires(is_enum_or_decimal_v<T>)
+		requires(std::is_enum_v<T> || std::is_floating_point_v<T>)
 		bool ReadPacked(T& value)
 		{
 			if      constexpr (sizeof(T) == sizeof(uint8_t))     return ReadPacked((uint8_t&)value);
@@ -179,7 +172,7 @@ namespace FIO
 		}
 
 		template<typename T>
-		requires(is_integer_v<T>)
+		requires(std::is_integral_v<T>)
 		bool WritePacked(T value)
 		{
 			if (!buffer_write)
@@ -208,7 +201,7 @@ namespace FIO
 			return false;
 		}
 		template<typename T>
-		requires(is_enum_or_decimal_v<T>)
+		requires(std::is_enum_v<T> || std::is_floating_point_v<T>)
 		bool WritePacked(T value)
 		{
 			if      constexpr (sizeof(T) == sizeof(uint8_t))     return WritePacked((uint8_t)value);
