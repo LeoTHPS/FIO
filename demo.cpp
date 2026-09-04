@@ -1,5 +1,6 @@
 #include <format>
 #include <string>
+#include <thread>
 #include <iostream>
 #include <iterator>
 
@@ -29,11 +30,8 @@ void print(std::string_view format, T ... args)
 	FIO::SpinLockGuard lock(print_lock);
 
 	std::format_to(it, "[{:.6f}] ", print_timer.GetElapsed().ToMicroseconds() / 1000000.0f);
-#if defined(FIO_LINUX)
-	std::cout << '[' << gettid() << "] ";
-#elif defined(FIO_WIN32)
-	std::cout << '[' << GetCurrentThreadId() << "] ";
-#endif
+	std::cout << '[' << std::this_thread::get_id() << "] ";
+
 	if constexpr (sizeof...(T) == 0)
 		std::cout << format;
 	else
@@ -49,11 +47,8 @@ void print(std::wstring_view format, T ... args)
 	FIO::SpinLockGuard lock(print_lock);
 
 	std::format_to(it, L"[{:.6f}] ", print_timer.GetElapsed().ToMicroseconds() / 1000000.0f);
-#if defined(FIO_LINUX)
-	std::wcout << L'[' << gettid() << L"] ";
-#elif defined(FIO_WIN32)
-	std::wcout << L'[' << GetCurrentThreadId() << L"] ";
-#endif
+	std::wcout << '[' << std::this_thread::get_id() << "] ";
+
 	if constexpr (sizeof...(T) == 0)
 		std::wcout << format;
 	else
