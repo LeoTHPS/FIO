@@ -6,8 +6,28 @@
 
 namespace FIO
 {
+	template<typename T>
+	constexpr bool is_enum_v    = std::is_enum_v<T>;
+	template<typename T>
+	constexpr bool is_float_v   = std::is_floating_point_v<T>;
+#ifdef __SIZEOF_INT128__
+	template<typename T>
+	constexpr bool is_integer_v = std::is_integral_v<T> || std::is_same_v<T, __int128_t> || std::is_same_v<T, __uint128_t>;
+#else
+	template<typename T>
+	constexpr bool is_integer_v = std::is_integral_v<T>;
+#endif
+
 	class Endian
 	{
+#pragma pack(push, 1)
+		template<typename T>
+		struct Buffer
+		{
+			uint8_t Bytes[sizeof(T)];
+		};
+#pragma pack(pop)
+
 		Endian() = delete;
 
 	public:
@@ -18,18 +38,21 @@ namespace FIO
 			MACHINE = (int)std::endian::native
 		};
 
-		template<typename T>
-		requires(std::is_enum_v<T> || std::is_integral_v<T> || std::is_floating_point_v<T>)
-		static constexpr T Flip(T value)
+		static constexpr bool IsBig()
 		{
-#pragma pack(push, 1)
-			struct Buffer
-			{
-				uint8_t Bytes[sizeof(T)];
-			};
-#pragma pack(pop)
+			return MACHINE == BIG;
+		}
 
-			auto buffer = std::bit_cast<Buffer>(value);
+		static constexpr bool IsLittle()
+		{
+			return MACHINE == LITTLE;
+		}
+
+		template<typename T>
+		requires(is_enum_v<T> || is_float_v<T> || is_integer_v<T>)
+		static constexpr auto Flip(T value)
+		{
+			auto buffer = std::bit_cast<Buffer<T>>(value);
 
 			std::ranges::reverse(buffer.Bytes);
 
@@ -37,7 +60,7 @@ namespace FIO
 		}
 
 		template<typename T>
-		static constexpr T HostToNetwork(T value)
+		static constexpr auto HostToNetwork(T value)
 		{
 			if constexpr (MACHINE != BIG)
 				return Flip(value);
@@ -45,7 +68,7 @@ namespace FIO
 				return value;
 		}
 		template<typename T>
-		static constexpr T NetworkToHost(T value)
+		static constexpr auto NetworkToHost(T value)
 		{
 			if constexpr (MACHINE != BIG)
 				return Flip(value);
