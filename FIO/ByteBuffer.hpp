@@ -2,7 +2,6 @@
 #include <string>
 #include <cstdint>
 #include <utility>
-#include <type_traits>
 
 #include "Endian.hpp"
 
@@ -73,7 +72,7 @@ namespace FIO
 		void SetWritePosition(size_t value);
 
 		template<typename T>
-		requires(std::is_enum_v<T> || std::is_integral_v<T> || std::is_floating_point_v<T>)
+		requires(is_enum_v<T> || is_float_v<T> || is_integer_v<T>)
 		bool Read(T& value)
 		{
 			if (!Read(&value, sizeof(T)))
@@ -104,7 +103,7 @@ namespace FIO
 		bool Read(void* buffer, size_t size);
 
 		template<typename T>
-		requires(std::is_enum_v<T> || std::is_integral_v<T> || std::is_floating_point_v<T>)
+		requires(is_enum_v<T> || is_float_v<T> || is_integer_v<T>)
 		bool Write(T value)
 		{
 			if (GetEndian() != Endian::MACHINE)
@@ -129,7 +128,7 @@ namespace FIO
 		bool WriteBlock(const void* buffer, size_t size);
 
 		template<typename T>
-		requires(std::is_integral_v<T>)
+		requires(is_integer_v<T>)
 		bool ReadPacked(T& value)
 		{
 			if (!buffer_read)
@@ -157,7 +156,7 @@ namespace FIO
 			return false;
 		}
 		template<typename T>
-		requires(std::is_enum_v<T> || std::is_floating_point_v<T>)
+		requires(is_enum_v<T> || is_float_v<T>)
 		bool ReadPacked(T& value)
 		{
 			if      constexpr (sizeof(T) == sizeof(uint8_t))     return ReadPacked((uint8_t&)value);
@@ -172,7 +171,7 @@ namespace FIO
 		}
 
 		template<typename T>
-		requires(std::is_integral_v<T>)
+		requires(is_integer_v<T>)
 		bool WritePacked(T value)
 		{
 			if (!buffer_write)
@@ -201,7 +200,7 @@ namespace FIO
 			return false;
 		}
 		template<typename T>
-		requires(std::is_enum_v<T> || std::is_floating_point_v<T>)
+		requires(is_enum_v<T> || is_float_v<T>)
 		bool WritePacked(T value)
 		{
 			if      constexpr (sizeof(T) == sizeof(uint8_t))     return WritePacked((uint8_t)value);
