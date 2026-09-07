@@ -72,8 +72,8 @@ namespace FIO
 		bool                  is_closing;
 		bool                  is_associated;
 
-		uint32_t              baud;
-		int                   flags;
+		const uint32_t        baud;
+		const int             flags;
 #if defined(FIO_LINUX)
 		std::string           path;
 		std::atomic<int>      error;
