@@ -113,6 +113,11 @@ namespace FIO
 #endif
 		}
 
+		constexpr auto GetLastError() const
+		{
+			return error;
+		}
+
 		bool Join();
 
 		bool Post(Function&& function);
