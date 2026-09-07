@@ -19,6 +19,8 @@ add_library(FIO STATIC
 
 	${CMAKE_CURRENT_LIST_DIR}/FIO/Thread.cpp
 	${CMAKE_CURRENT_LIST_DIR}/FIO/ThreadPool.cpp
+
+	${CMAKE_CURRENT_LIST_DIR}/FIO/SerialPort.cpp
 )
 target_include_directories(FIO PUBLIC ${CMAKE_CURRENT_LIST_DIR})
 
