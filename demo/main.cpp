@@ -13,6 +13,7 @@
 #include <FIO/MPSCQueue.hpp>
 #include <FIO/Directory.hpp>
 #include <FIO/ByteBuffer.hpp>
+#include <FIO/SerialPort.hpp>
 #include <FIO/ThreadPool.hpp>
 
 #ifdef FIO_WIN32
@@ -441,6 +442,42 @@ public:
 	}
 };
 
+class demo_serial_port
+{
+	FIO::SerialPort port;
+	uint8_t         buffer[0xFF];
+	FIO::ThreadPool threads;
+
+public:
+	demo_serial_port(std::string_view path, uint32_t baud, size_t thread_count)
+		: port(path, baud, FIO::SerialPort::FLAG_DTR_CONTROL_ENABLE | FIO::SerialPort::FLAG_RTS_CONTROL_DISABLE),
+		threads(thread_count)
+	{
+	}
+
+	void run()
+	{
+		print("threads.Start() -> {}", threads.Start());
+
+		print("port.Open() -> {}", port.Open());
+		print("port.Associate() -> {}", port.Associate(threads));
+
+		print("port.Read() -> {}", port.Read(buffer, sizeof(buffer), std::bind(&demo_serial_port::on_read, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
+
+		// print("threads.Shutdown() -> {}", (threads.Shutdown(), true));
+		print("threads.Join() -> {}", threads.Join());
+	}
+
+private:
+	void on_read(FIO::SerialPort& port, void* buffer, size_t size, size_t number_of_bytes_read)
+	{
+		print("read {} bytes [error: {}]", number_of_bytes_read, port.GetLastError());
+
+		if (number_of_bytes_read)
+			print("port.Read() -> {}", port.Read(buffer, size, std::bind(&demo_serial_port::on_read, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
+	}
+};
+
 class demo_mpsc_queue
 {
 	FIO::MPSCQueue<int> queue;
@@ -496,6 +533,8 @@ int main(int argc, char* argv[])
 	// demo_directory().run();
 
 	// demo_byte_buffer().run();
+
+	demo_serial_port("\\\\.\\\\COM5", 115200, THREAD_COUNT).run();
 
 	// demo_mpsc_queue(THREAD_COUNT).run();
 
