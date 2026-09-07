@@ -113,7 +113,7 @@ bool FIO::SerialPort::Open()
 		return false;
 	}
 
-	COMMTIMEOUTS timeouts = { .ReadIntervalTimeout = MAXWORD };
+	COMMTIMEOUTS timeouts = { .ReadIntervalTimeout = MAXDWORD };
 
 	if (!SetCommTimeouts(handle, &timeouts))
 	{
