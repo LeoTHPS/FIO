@@ -48,6 +48,7 @@ void FIO::ThreadPool::IOManager::Wait() const
 FIO::ThreadPool::ThreadPool(size_t size)
 	: is_running(false),
 	is_stopping(false),
+	error(0),
 #if defined(FIO_LINUX)
 
 #elif defined(FIO_WIN32)
@@ -91,6 +92,7 @@ bool FIO::ThreadPool::Post(Function&& function)
 #elif defined(FIO_WIN32)
 	if (!PostQueuedCompletionStatus(GetHandle(), 0, IOCP_REQUEST_KEY_FUNC, (LPOVERLAPPED)func))
 	{
+		error    = ::GetLastError();
 		function = std::move(*func);
 
 		delete func;
@@ -111,7 +113,11 @@ bool FIO::ThreadPool::Post(const Function& function)
 	return false;
 #elif defined(FIO_WIN32)
 	if (!PostQueuedCompletionStatus(GetHandle(), 0, IOCP_REQUEST_KEY_FUNC_PTR, (LPOVERLAPPED)&function))
+	{
+		error = ::GetLastError();
+
 		return false;
+	}
 #endif
 
 	return true;
@@ -138,7 +144,11 @@ bool FIO::ThreadPool::Start()
 
 #if defined(FIO_WIN32)
 	if (!(handle = CreateIoCompletionPort(INVALID_THREAD_POOL_HANDLE, nullptr, 0, (DWORD)GetSize())))
+	{
+		error = ::GetLastError();
+
 		return false;
+	}
 #endif
 
 	is_running    = true;
@@ -148,6 +158,8 @@ bool FIO::ThreadPool::Start()
 	for (auto it = threads.begin(); it != threads.end(); ++it)
 		if (!(*it)->Start(std::bind(&ThreadPool::Thread_Main, this, std::placeholders::_1)))
 		{
+			error = (*it)->GetLastError();
+
 			Shutdown();
 
 			return false;
@@ -165,7 +177,8 @@ void FIO::ThreadPool::Shutdown()
 		// TODO: implement linux
 #elif defined(FIO_WIN32)
 		for (auto thread : threads)
-			PostQueuedCompletionStatus(GetHandle(), 0, IOCP_REQUEST_KEY_SHUTDOWN, nullptr);
+			if (!PostQueuedCompletionStatus(GetHandle(), 0, IOCP_REQUEST_KEY_SHUTDOWN, nullptr))
+				error = ::GetLastError();
 #endif
 	}
 }
@@ -176,7 +189,11 @@ bool FIO::ThreadPool::Associate(HANDLE handle)
 		return false;
 
 	if (!CreateIoCompletionPort(handle, GetHandle(), IOCP_REQUEST_KEY_IO, 0))
+	{
+		error = ::GetLastError();
+
 		return false;
+	}
 
 	return true;
 }
@@ -193,7 +210,7 @@ void FIO::ThreadPool::Thread_Main(Thread& thread)
 	{
 		if (!GetQueuedCompletionStatusEx(GetHandle(), &entry, 1, &entry_count, INFINITE, TRUE))
 		{
-			switch (GetLastError())
+			switch (::GetLastError())
 			{
 				case WAIT_TIMEOUT:
 				case WAIT_IO_COMPLETION:
@@ -207,6 +224,8 @@ void FIO::ThreadPool::Thread_Main(Thread& thread)
 
 	if (threads_count.fetch_sub(1) == 1)
 	{
+		error       = 0;
+
 #if defined(FIO_LINUX)
 		// TODO: implement linux
 #elif defined(FIO_WIN32)

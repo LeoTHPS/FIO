@@ -71,7 +71,10 @@ namespace FIO
 		std::atomic<bool>    is_running;
 		std::atomic<bool>    is_stopping;
 
-#if defined(FIO_WIN32)
+#if defined(FIO_LINUX)
+		int                  error;
+#elif defined(FIO_WIN32)
+		DWORD                error;
 		HANDLE               handle;
 #endif
 
