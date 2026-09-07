@@ -59,7 +59,7 @@ bool FIO::SerialPort::Open()
 #if defined(FIO_LINUX)
 	// TODO: implement linux
 #elif defined(FIO_WIN32)
-	if ((handle = CreateFileW(GetPath().c_str(), GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0)) == INVALID_HANDLE_VALUE)
+	if ((handle = CreateFileW(GetPath().c_str(), GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_FLAG_OVERLAPPED | FILE_ATTRIBUTE_NORMAL, 0)) == INVALID_HANDLE_VALUE)
 	{
 		error = ::GetLastError();
 
