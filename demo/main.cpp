@@ -143,7 +143,7 @@ private:
 	{
 		print("read {}/{} bytes [error: {}]", file.GetReadPosition(), file.GetSize(), file.GetLastError());
 
-		if (number_of_bytes_read)
+		if (!file.GetLastError())
 			print("file.Read() -> {}", file.Read(buffer, size, std::bind(&demo_file_in::on_read, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
 	}
 };
@@ -179,7 +179,8 @@ private:
 	{
 		print("wrote {} bytes [error: {}]", number_of_bytes_written, file.GetLastError());
 
-		print("file.Write() -> {}", file.Write(buffer, size, std::bind(&demo_file_out::on_write, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
+		if (!file.GetLastError())
+			print("file.Write() -> {}", file.Write(buffer, size, std::bind(&demo_file_out::on_write, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
 	}
 };
 
@@ -229,29 +230,35 @@ private:
 	{
 		print("accepted connection from {} [error: {}]", client.GetRemoteEndPoint().ToString(), socket.GetLastError());
 
-		print("socket1_client.Associate() -> {}", client.Associate(threads));
-		print("socket1_client.Receive() -> {}", client.Receive(socket1_buffer, sizeof(socket1_buffer), std::bind(&demo_socket_tcp::on_receive, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
+		if (!socket.GetLastError())
+		{
+			print("socket1_client.Associate() -> {}", client.Associate(threads));
+			print("socket1_client.Receive() -> {}", client.Receive(socket1_buffer, sizeof(socket1_buffer), std::bind(&demo_socket_tcp::on_receive, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
+		}
 	}
 
 	void on_connect(FIO::Socket& socket)
 	{
 		print("connected to {} [error: {}]", socket.GetRemoteEndPoint().ToString(), socket.GetLastError());
 
-		print("socket2.Send() -> {}", socket.Send(socket2_buffer, sizeof(socket2_buffer), std::bind(&demo_socket_tcp::on_send, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
+		if (!socket.GetLastError())
+			print("socket2.Send() -> {}", socket.Send(socket2_buffer, sizeof(socket2_buffer), std::bind(&demo_socket_tcp::on_send, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
 	}
 
 	void on_send(FIO::Socket& socket, const void* buffer, size_t size, size_t number_of_bytes_sent)
 	{
 		print("sent {} bytes [error: {}]", number_of_bytes_sent, socket.GetLastError());
 
-		socket.Send(buffer, size, std::bind(&demo_socket_tcp::on_send, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+		if (!socket.GetLastError())
+			socket.Send(buffer, size, std::bind(&demo_socket_tcp::on_send, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 	}
 
 	void on_receive(FIO::Socket& socket, void* buffer, size_t size, size_t number_of_bytes_received)
 	{
 		print("received {} bytes [error: {}]", number_of_bytes_received, socket.GetLastError());
 
-		socket.Receive(buffer, size, std::bind(&demo_socket_tcp::on_receive, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+		if (!socket.GetLastError())
+			socket.Receive(buffer, size, std::bind(&demo_socket_tcp::on_receive, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 	}
 };
 
@@ -298,14 +305,16 @@ private:
 	{
 		print("sent {} bytes [error: {}]", number_of_bytes_sent, socket.GetLastError());
 
-		socket.Send(buffer, size, std::bind(&demo_socket_udp::on_send, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+		if (!socket.GetLastError())
+			socket.Send(buffer, size, std::bind(&demo_socket_udp::on_send, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 	}
 
 	void on_receive(FIO::Socket& socket, void* buffer, size_t size, size_t number_of_bytes_received)
 	{
 		print("received {} bytes [error: {}]", number_of_bytes_received, socket.GetLastError());
 
-		socket.Receive(buffer, size, std::bind(&demo_socket_udp::on_receive, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+		if (!socket.GetLastError())
+			socket.Receive(buffer, size, std::bind(&demo_socket_udp::on_receive, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 	}
 };
 
@@ -358,7 +367,8 @@ private:
 
 		print("received {} bytes [error: {}]: {}", number_of_bytes_received, socket.GetLastError(), hex);
 
-		socket.Receive(buffer, size, std::bind(&demo_socket_raw_sniff_v4::on_receive, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+		if (!socket.GetLastError())
+			socket.Receive(buffer, size, std::bind(&demo_socket_raw_sniff_v4::on_receive, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
 	}
 };
 
@@ -471,10 +481,24 @@ public:
 private:
 	void on_read(FIO::SerialPort& port, void* buffer, size_t size, size_t number_of_bytes_read)
 	{
-		print("read {} bytes [error: {}]", number_of_bytes_read, port.GetLastError());
+		if (number_of_bytes_read && !is_eol((const char*)buffer, number_of_bytes_read))
+		{
+			std::string_view line((const char*)buffer, number_of_bytes_read);
 
-		if (number_of_bytes_read)
-			print("port.Read() -> {}", port.Read(buffer, size, std::bind(&demo_serial_port::on_read, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
+			print("read {} bytes [error: {}]: {}", number_of_bytes_read, port.GetLastError(), line);
+		}
+
+		if (!port.GetLastError())
+			port.Read(buffer, size, std::bind(&demo_serial_port::on_read, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+			// print("port.Read() -> {}", port.Read(buffer, size, std::bind(&demo_serial_port::on_read, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
+	}
+
+	static bool is_eol(const char* buffer, size_t length)
+	{
+		if (length == 2)
+			return (buffer[0] == '\r') && (buffer[1] == '\n');
+
+		return false;
 	}
 };
 
