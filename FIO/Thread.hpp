@@ -15,16 +15,16 @@ namespace FIO
 		typedef std::function<void(Thread& thread)> Main;
 
 	private:
-		bool       is_open;
-		bool       is_running;
+		bool      is_open;
+		bool      is_running;
 
-		Main       main;
+		Main      main;
 #if defined(FIO_LINUX)
-		int        error;
-		pthread_t  handle;
+		int       error;
+		pthread_t handle;
 #elif defined(FIO_WIN32)
-		DWORD      error;
-		HANDLE     handle;
+		DWORD     error;
+		HANDLE    handle;
 #endif
 
 		Thread(Thread&&) = delete;
