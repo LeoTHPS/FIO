@@ -71,11 +71,11 @@ namespace FIO
 		const int             mode;
 		std::atomic<uint64_t> size;
 #if defined(FIO_LINUX)
-		std::string           path;
+		const std::string     path;
 		std::atomic<int>      error;
 		int                   handle;
 #elif defined(FIO_WIN32)
-		std::wstring          path;
+		const std::wstring    path;
 		std::atomic<DWORD>    error;
 		HANDLE                handle;
 #endif
