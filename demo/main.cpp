@@ -129,9 +129,7 @@ public:
 	{
 		print("threads.Start() -> {}", threads.Start());
 
-		print("file.Open() -> {}", file.Open());
-		print("file.Associate() -> {}", file.Associate(threads));
-
+		print("file.Open() -> {}", file.Open(&threads));
 		print("file.Read() -> {}", file.Read(buffer, sizeof(buffer), std::bind(&demo_file_in::on_read, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
 
 		// print("threads.Shutdown() -> {}", (threads.Shutdown(), true));
@@ -165,9 +163,7 @@ public:
 	{
 		print("threads.Start() -> {}", threads.Start());
 
-		print("file.Open() -> {}", file.Open());
-		print("file.Associate() -> {}", file.Associate(threads));
-
+		print("file.Open() -> {}", file.Open(&threads));
 		print("file.Write() -> {}", file.Write(buffer, sizeof(buffer), std::bind(&demo_file_out::on_write, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
 
 		// print("threads.Shutdown() -> {}", (threads.Shutdown(), true));
@@ -469,9 +465,7 @@ public:
 	{
 		print("threads.Start() -> {}", threads.Start());
 
-		print("port.Open() -> {}", port.Open());
-		print("port.Associate() -> {}", port.Associate(threads));
-
+		print("port.Open() -> {}", port.Open(&threads));
 		print("port.Read() -> {}", port.Read(buffer, sizeof(buffer), std::bind(&demo_serial_port::on_read, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)));
 
 		// print("threads.Shutdown() -> {}", (threads.Shutdown(), true));

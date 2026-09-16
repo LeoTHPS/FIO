@@ -210,10 +210,8 @@ namespace FIO
 		// @return 0 on error
 		// @return -1 on not found
 		// @return -2 on already exists
-		int  Open();
+		int  Open(ThreadPool* pool = nullptr);
 		void Close(bool wait_for_io = false);
-
-		bool Associate(ThreadPool& pool);
 
 		bool Read(void* buffer, size_t size, size_t& number_of_bytes_read);
 		bool Read(void* buffer, size_t size, ReadCallback&& callback);

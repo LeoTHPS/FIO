@@ -346,7 +346,7 @@ void FIO::File::SetWritePosition(uint64_t value)
 	Position_Set(POSITION_TYPE_WRITE, value);
 }
 
-int  FIO::File::Open()
+int  FIO::File::Open(ThreadPool* pool)
 {
 	if (IsOpen())
 		return 0;
@@ -395,9 +395,13 @@ int  FIO::File::Open()
 
 	size = info.st_size;
 #elif defined(FIO_WIN32)
+	DWORD flags       = FILE_ATTRIBUTE_NORMAL;
 	DWORD share       = 0;
 	DWORD access      = 0;
 	DWORD disposition = OPEN_EXISTING;
+
+	if (pool != nullptr)
+		flags |= FILE_FLAG_OVERLAPPED;
 
 	if (GetMode() & MODE_READ)     access |= FILE_GENERIC_READ;
 	if (GetMode() & MODE_WRITE)    access |= FILE_GENERIC_WRITE;
@@ -405,7 +409,7 @@ int  FIO::File::Open()
 	if (GetMode() & MODE_CREATE)   disposition = OPEN_ALWAYS;
 	if (GetMode() & MODE_TRUNCATE) disposition = CREATE_ALWAYS;
 
-	if ((handle = CreateFileW(GetPath().c_str(), access, share, nullptr, disposition, FILE_FLAG_OVERLAPPED | FILE_ATTRIBUTE_NORMAL, nullptr)) == INVALID_FILE_HANDLE)
+	if ((handle = CreateFileW(GetPath().c_str(), access, share, nullptr, disposition, flags, nullptr)) == INVALID_FILE_HANDLE)
 	{
 		switch (error = ::GetLastError())
 		{
@@ -435,6 +439,26 @@ int  FIO::File::Open()
 
 	size = ((uint64_t)file_attr_data.nFileSizeHigh << 32) | (uint64_t)file_attr_data.nFileSizeLow;
 #endif
+
+	if (pool != nullptr)
+	{
+#if defined(FIO_LINUX)
+		// TODO: implement linux
+#elif defined(FIO_WIN32)
+		if (!pool->Associate(GetHandle()))
+		{
+			error = ::GetLastError();
+
+			CloseHandle(handle);
+			handle = INVALID_FILE_HANDLE;
+
+			return 0;
+		}
+#endif
+
+		thread_pool   = pool;
+		is_associated = true;
+	}
 
 	is_open = true;
 
@@ -474,27 +498,9 @@ void FIO::File::Close(bool wait_for_io)
 	}
 }
 
-bool FIO::File::Associate(ThreadPool& pool)
-{
-	if (!IsOpen() || is_closing)
-		return false;
-
-#if defined(FIO_LINUX)
-	// TODO: implement linux
-#elif defined(FIO_WIN32)
-	if (!pool.Associate(GetHandle()))
-		return false;
-#endif
-
-	thread_pool   = &pool;
-	is_associated = true;
-
-	return true;
-}
-
 bool FIO::File::Read(void* buffer, size_t size, size_t& number_of_bytes_read)
 {
-	if (!IsOpen() || IsWriteOnly() || is_closing)
+	if (!IsOpen() || is_closing || IsWriteOnly() || IsAssociated())
 		return false;
 
 	if (!Position_Select(POSITION_TYPE_READ))
@@ -535,7 +541,7 @@ bool FIO::File::Read(void* buffer, size_t size, size_t& number_of_bytes_read)
 }
 bool FIO::File::Read(void* buffer, size_t size, ReadCallback&& callback)
 {
-	if (!IsOpen() || IsWriteOnly() || is_closing)
+	if (!IsOpen() || is_closing || IsWriteOnly() || !IsAssociated())
 		return false;
 
 	if (!Position_SelectAsync(POSITION_TYPE_READ))
@@ -575,7 +581,7 @@ bool FIO::File::Read(void* buffer, size_t size, ReadCallback&& callback)
 
 bool FIO::File::Write(const void* buffer, size_t size, size_t& number_of_bytes_written)
 {
-	if (!IsOpen() || IsReadOnly() || is_closing)
+	if (!IsOpen() || is_closing || IsReadOnly() || IsAssociated())
 		return false;
 
 	if (!Position_Select(POSITION_TYPE_WRITE))
@@ -611,7 +617,7 @@ bool FIO::File::Write(const void* buffer, size_t size, size_t& number_of_bytes_w
 }
 bool FIO::File::Write(const void* buffer, size_t size, WriteCallback&& callback)
 {
-	if (!IsOpen() || IsReadOnly() || is_closing)
+	if (!IsOpen() || is_closing || IsReadOnly() || !IsAssociated())
 		return false;
 
 	if (!Position_SelectAsync(POSITION_TYPE_WRITE))
@@ -649,7 +655,7 @@ bool FIO::File::Write(const void* buffer, size_t size, WriteCallback&& callback)
 	return true;
 }
 
-#define Position_IsValid(value) ((type > POSITION_TYPE_NONE) && (type < POSITION_TYPE_COUNT))
+#define  Position_IsValid(value) ((type > POSITION_TYPE_NONE) && (type < POSITION_TYPE_COUNT))
 uint64_t FIO::File::Position_Get(int type) const
 {
 	return Position_IsValid(type) ? position[type].load() : 0;

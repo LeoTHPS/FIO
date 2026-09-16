@@ -138,10 +138,8 @@ namespace FIO
 			return thread_pool;
 		}
 
-		bool Open();
+		bool Open(ThreadPool* pool = nullptr);
 		void Close();
-
-		bool Associate(ThreadPool& pool);
 
 		bool Read(void* buffer, size_t size, size_t& number_of_bytes_read);
 		bool Read(void* buffer, size_t size, ReadCallback&& callback);

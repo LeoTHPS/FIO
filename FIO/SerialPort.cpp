@@ -51,7 +51,7 @@ FIO::SerialPort::~SerialPort()
 		Close();
 }
 
-bool FIO::SerialPort::Open()
+bool FIO::SerialPort::Open(ThreadPool* pool)
 {
 	if (IsOpen())
 		return false;
@@ -59,7 +59,12 @@ bool FIO::SerialPort::Open()
 #if defined(FIO_LINUX)
 	// TODO: implement linux
 #elif defined(FIO_WIN32)
-	if ((handle = CreateFileW(GetPath().c_str(), GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_FLAG_OVERLAPPED | FILE_ATTRIBUTE_NORMAL, 0)) == INVALID_HANDLE_VALUE)
+	DWORD cf_flags = FILE_ATTRIBUTE_NORMAL;
+
+	if (pool != nullptr)
+		cf_flags |= FILE_FLAG_OVERLAPPED;
+
+	if ((handle = CreateFileW(GetPath().c_str(), GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, cf_flags, 0)) == INVALID_HANDLE_VALUE)
 	{
 		error = ::GetLastError();
 
@@ -126,6 +131,26 @@ bool FIO::SerialPort::Open()
 	}
 #endif
 
+	if (pool != nullptr)
+	{
+#if defined(FIO_LINUX)
+		// TODO: implement linux
+#elif defined(FIO_WIN32)
+		if (!pool->Associate(GetHandle()))
+		{
+			error = ::GetLastError();
+
+			CloseHandle(handle);
+			handle = INVALID_SERIAL_PORT_HANDLE;
+
+			return false;
+		}
+#endif
+
+		thread_pool   = pool;
+		is_associated = true;
+	}
+
 	is_open = true;
 
 	return true;
@@ -158,31 +183,9 @@ void FIO::SerialPort::Close()
 	}
 }
 
-bool FIO::SerialPort::Associate(ThreadPool& pool)
-{
-	if (!IsOpen() || is_closing)
-		return false;
-
-#if defined(FIO_LINUX)
-	// TODO: implement linux
-#elif defined(FIO_WIN32)
-	if (!pool.Associate(GetHandle()))
-	{
-		error = pool.GetLastError();
-
-		return false;
-	}
-#endif
-
-	thread_pool   = &pool;
-	is_associated = true;
-
-	return true;
-}
-
 bool FIO::SerialPort::Read(void* buffer, size_t size, size_t& number_of_bytes_read)
 {
-	if (!IsOpen() || is_closing)
+	if (!IsOpen() || is_closing || IsAssociated())
 		return false;
 
 #if defined(FIO_LINUX)
@@ -218,7 +221,7 @@ bool FIO::SerialPort::Read(void* buffer, size_t size, size_t& number_of_bytes_re
 }
 bool FIO::SerialPort::Read(void* buffer, size_t size, ReadCallback&& callback)
 {
-	if (!IsOpen() || !IsAssociated() || is_closing)
+	if (!IsOpen() || is_closing || !IsAssociated())
 		return false;
 
 #if defined(FIO_LINUX)
@@ -249,7 +252,7 @@ bool FIO::SerialPort::Read(void* buffer, size_t size, ReadCallback&& callback)
 
 bool FIO::SerialPort::Write(const void* buffer, size_t size, size_t& number_of_bytes_written)
 {
-	if (!IsOpen() || is_closing)
+	if (!IsOpen() || is_closing || IsAssociated())
 		return false;
 
 #if defined(FIO_LINUX)
@@ -280,7 +283,7 @@ bool FIO::SerialPort::Write(const void* buffer, size_t size, size_t& number_of_b
 }
 bool FIO::SerialPort::Write(const void* buffer, size_t size, WriteCallback&& callback)
 {
-	if (!IsOpen() || !IsAssociated() || is_closing)
+	if (!IsOpen() || is_closing || !IsAssociated())
 		return false;
 
 #if defined(FIO_LINUX)
