@@ -156,6 +156,7 @@ namespace FIO
 		std::atomic<DWORD>    error;
 		SOCKET                handle;
 #endif
+		Socket*               parent;
 		int                   address_family;
 		IPEndPoint            ip_end_point_local;
 		IPEndPoint            ip_end_point_remote;
@@ -214,6 +215,11 @@ namespace FIO
 		constexpr auto  GetHandle() const
 		{
 			return handle;
+		}
+
+		constexpr auto  GetParent() const
+		{
+			return parent;
 		}
 
 		constexpr auto  GetProtocol() const

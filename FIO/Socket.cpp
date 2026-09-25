@@ -34,6 +34,7 @@ FIO::Socket::Socket(int type, int protocol)
 	error(0),
 	handle(INVALID_SOCKET_HANDLE),
 #endif
+	parent(nullptr),
 	protocol(protocol),
 	address_family(0),
 	ip_end_point_local{},
@@ -138,10 +139,11 @@ void FIO::Socket::Close(bool wait_for_io)
 
 		error               = 0;
 		handle              = INVALID_SOCKET_HANDLE;
-		thread_pool         = nullptr;
+		parent              = nullptr;
 		address_family      = 0;
 		ip_end_point_local  = {};
 		ip_end_point_remote = {};
+		thread_pool         = nullptr;
 
 		is_open             = false;
 		is_bound            = false;
@@ -247,6 +249,7 @@ int  FIO::Socket::Accept(Socket& socket)
 	error                 = 0;
 
 	socket.handle         = handle;
+	socket.parent         = this;
 	socket.address_family = GetAddressFamily();
 	socket.is_open        = true;
 	socket.is_connected   = true;
@@ -917,6 +920,7 @@ void FIO::Socket::OnAccept(ThreadPool& pool, ThreadPool::IOContext& io, size_t n
 
 			accept->Client->is_open      = true;
 			accept->Client->is_connected = true;
+			accept->Client->parent       = this;
 
 			accept->Callback(*this, *accept->Client);
 		}
