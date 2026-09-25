@@ -20,9 +20,7 @@ namespace FIO
 		{
 			FLAG_PARITY_ODD            = 0x1,
 			FLAG_PARITY_EVEN           = 0x2,
-			FLAG_PARITY_MARK           = 0x4,
-			FLAG_PARITY_SPACE          = 0x8,
-			FLAG_PARITY_DISABLED       = 0x10,
+			FLAG_PARITY_DISABLED       = 0x4,
 
 			FLAG_TWO_STOP_BITS         = 0x100,
 
@@ -33,10 +31,8 @@ namespace FIO
 			FLAG_DTR_CONTROL_DISABLE   = 0x20000,
 			FLAG_DTR_CONTROL_HANDSHAKE = 0x40000,
 
-			FLAG_RTS_CONTROL_TOGGLE    = 0x100000,
-			FLAG_RTS_CONTROL_ENABLE    = 0x200000,
-			FLAG_RTS_CONTROL_DISABLE   = 0x400000,
-			FLAG_RTS_CONTROL_HANDSHAKE = 0x800000
+			FLAG_RTS_CONTROL_ENABLE    = 0x100000,
+			FLAG_RTS_CONTROL_DISABLE   = 0x200000,
 		};
 
 		typedef std::function<void(SerialPort& port, void* buffer, size_t size, size_t number_of_bytes_read)>          ReadCallback;

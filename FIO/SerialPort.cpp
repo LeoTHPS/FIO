@@ -55,7 +55,71 @@ bool FIO::SerialPort::Open(ThreadPool* pool)
 		return false;
 
 #if defined(FIO_LINUX)
-	// TODO: implement linux
+	if ((handle = open(GetPath().c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK)) < 0)
+	{
+		error = errno;
+
+		return false;
+	}
+
+	termios tio;
+
+	if (tcgetattr(handle, &tio) < 0)
+	{
+		error = errno;
+
+		close(handle);
+		handle = INVALID_SERIAL_PORT_HANDLE;
+
+		return false;
+	}
+
+	tio.c_cflag |= CS8 | CLOCAL | CREAD;
+	tio.c_cflag &= ~CSIZE;
+
+	// tio.c_cc[VMIN]  = 0;
+	// tio.c_cc[VTIME] = 0;
+
+	cfsetspeed(&tio, (speed_t)GetBaud());
+
+	if (auto flags = GetFlags())
+	{
+		tio.c_cflag &= ~(PARENB | PARODD);
+
+		     if (flags & FLAG_PARITY_ODD)         tio.c_cflag |= PARENB | PARODD;
+		else if (flags & FLAG_PARITY_EVEN)        tio.c_cflag |= PARENB;
+
+		if (flags & FLAG_TWO_STOP_BITS)           tio.c_cflag |= CSTOPB;
+		else                                      tio.c_cflag &= ~CSTOPB;
+
+		     if (flags & FLAG_CTS_CONTROL_ENABLE) tio.c_cflag |= CRTSCTS;
+		else if (flags & FLAG_CTS_CONTROL_ENABLE) tio.c_cflag &= ~CRTSCTS;
+
+		if (flags & FLAG_RTS_CONTROL_ENABLE)
+		{
+			int mcs;
+			ioctl(handle, TIOCMGET, &mcs);
+			mcs |= TIOCM_RTS;
+			ioctl(handle, TIOCMSET, &mcs);
+		}
+		else if (flags & FLAG_RTS_CONTROL_DISABLE)
+		{
+			int mcs;
+			ioctl(handle, TIOCMGET, &mcs);
+			mcs &= ~TIOCM_RTS;
+			ioctl(handle, TIOCMSET, &mcs);
+		}
+	}
+
+	if (tcsetattr(handle, TCSANOW, &tio) < 0)
+	{
+		error = errno;
+
+		close(handle);
+		handle = INVALID_SERIAL_PORT_HANDLE;
+
+		return false;
+	}
 #elif defined(FIO_WIN32)
 	DWORD cf_flags = FILE_ATTRIBUTE_NORMAL;
 
@@ -89,21 +153,17 @@ bool FIO::SerialPort::Open(ThreadPool* pool)
 
 	if (auto flags = GetFlags())
 	{
-		     if (flags & FLAG_PARITY_ODD)          { dcb.Parity = ODDPARITY;   dcb.fParity = TRUE;  }
-		else if (flags & FLAG_PARITY_EVEN)         { dcb.Parity = EVENPARITY;  dcb.fParity = TRUE;  }
-		else if (flags & FLAG_PARITY_MARK)         { dcb.Parity = MARKPARITY;  dcb.fParity = TRUE;  }
-		else if (flags & FLAG_PARITY_SPACE)        { dcb.Parity = SPACEPARITY; dcb.fParity = TRUE;  }
-		else if (flags & FLAG_PARITY_DISABLED)     { dcb.Parity = NOPARITY;    dcb.fParity = FALSE; }
+		     if (flags & FLAG_PARITY_ODD)         { dcb.Parity = ODDPARITY;   dcb.fParity = TRUE;  }
+		else if (flags & FLAG_PARITY_EVEN)        { dcb.Parity = EVENPARITY;  dcb.fParity = TRUE;  }
+		else if (flags & FLAG_PARITY_DISABLED)    { dcb.Parity = NOPARITY;    dcb.fParity = FALSE; }
 
-		if (flags & FLAG_TWO_STOP_BITS)              dcb.StopBits = TWOSTOPBITS;
+		if (flags & FLAG_TWO_STOP_BITS)             dcb.StopBits = TWOSTOPBITS;
 
-		     if (flags & FLAG_CTS_CONTROL_ENABLE)    dcb.fOutxCtsFlow = TRUE;
-		else if (flags & FLAG_CTS_CONTROL_ENABLE)    dcb.fOutxCtsFlow = FALSE;
+		     if (flags & FLAG_CTS_CONTROL_ENABLE)   dcb.fOutxCtsFlow = TRUE;
+		else if (flags & FLAG_CTS_CONTROL_ENABLE)   dcb.fOutxCtsFlow = FALSE;
 
-		     if (flags & FLAG_RTS_CONTROL_TOGGLE)    dcb.fRtsControl = RTS_CONTROL_TOGGLE;
-		else if (flags & FLAG_RTS_CONTROL_ENABLE)    dcb.fRtsControl = RTS_CONTROL_ENABLE;
-		else if (flags & FLAG_RTS_CONTROL_DISABLE)   dcb.fRtsControl = RTS_CONTROL_DISABLE;
-		else if (flags & FLAG_RTS_CONTROL_HANDSHAKE) dcb.fRtsControl = RTS_CONTROL_HANDSHAKE;
+		     if (flags & FLAG_RTS_CONTROL_ENABLE)   dcb.fRtsControl = RTS_CONTROL_ENABLE;
+		else if (flags & FLAG_RTS_CONTROL_DISABLE)  dcb.fRtsControl = RTS_CONTROL_DISABLE;
 	}
 
 	if (!SetCommState(handle, &dcb))
