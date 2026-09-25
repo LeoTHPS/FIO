@@ -3,8 +3,6 @@
 #if defined(FIO_LINUX)
 	#define INVALID_SERIAL_PORT_HANDLE -1
 
-	#define GetLastError()             errno
-
 	#include <fcntl.h>
 	#include <unistd.h>
 	#include <termios.h>
@@ -193,7 +191,7 @@ bool FIO::SerialPort::Read(void* buffer, size_t size, size_t& number_of_bytes_re
 
 	if ((num_bytes_read = read(GetHandle(), buffer, size)) == -1)
 	{
-		error = ::GetLastError();
+		error = errno;
 
 		return false;
 	}
@@ -260,7 +258,7 @@ bool FIO::SerialPort::Write(const void* buffer, size_t size, size_t& number_of_b
 
 	if ((num_bytes_written = write(GetHandle(), buffer, size)) == -1)
 	{
-		error = ::GetLastError();
+		error = errno;
 
 		return false;
 	}

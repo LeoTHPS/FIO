@@ -6,28 +6,16 @@
 #include <limits>
 
 #if defined(FIO_LINUX)
-	#define GetLastError()    errno
-	#define WSAGetLastError() errno
-
-	#define SOCKET_ERROR      -1
-	#define INVALID_SOCKET    -1
-
-	#define WSAEINTR          EINTR
-	#define WSAENOBUFS        ENOBUFS
-	#define WSAEALREADY       EALREADY
-	#define WSAETIMEDOUT      ETIMEDOUT
-	#define WSAECONNRESET     ECONNRESET
-	#define WSAEINPROGRESS    EINPROGRESS
-	#define WSAEWOULDBLOCK    EWOULDBLOCK
+	#define INVALID_SOCKET_HANDLE -1
 
 	#include <fcntl.h>
 #elif defined(FIO_WIN32)
 	#include <Ws2Tcpip.h>
 	#include <Ws2Ipdef.h>
 	#include <Mswsock.h>
-#endif
 
-#define INVALID_SOCKET_HANDLE INVALID_SOCKET
+	#define INVALID_SOCKET_HANDLE INVALID_SOCKET
+#endif
 
 FIO::Socket::Socket(int type, int protocol)
 	: is_open(false),
@@ -109,15 +97,20 @@ bool FIO::Socket::Open(int address_family)
 		return false;
 
 #if defined(FIO_LINUX)
-	if ((handle = socket(address_family, GetType(), GetProtocol())) == INVALID_SOCKET)
+	if ((handle = socket(address_family, GetType(), GetProtocol())) == -1)
+	{
+		error = errno;
+
+		return false;
+	}
 #elif defined(FIO_WIN32)
 	if ((handle = WSASocket(address_family, GetType(), GetProtocol(), nullptr, 0, WSA_FLAG_OVERLAPPED)) == INVALID_SOCKET)
-#endif
 	{
 		error = WSAGetLastError();
 
 		return false;
 	}
+#endif
 
 	this->error          = 0;
 	this->address_family = address_family;
@@ -169,12 +162,21 @@ bool FIO::Socket::Bind(const IPEndPoint& local_ip_end_point)
 	socklen_t        address_size;
 	local_ip_end_point.ToStorage(address, address_size);
 
+#if defined(FIO_LINUX)
+	if (bind(GetHandle(), (const sockaddr*)&address, address_size) == -1)
+	{
+		error = errno;
+
+		return false;
+	}
+#elif defined(FIO_WIN32)
 	if (bind(GetHandle(), (const sockaddr*)&address, address_size) == SOCKET_ERROR)
 	{
 		error = WSAGetLastError();
 
 		return false;
 	}
+#endif
 
 	error              = 0;
 	ip_end_point_local = local_ip_end_point;
@@ -194,6 +196,17 @@ int  FIO::Socket::Accept(Socket& socket)
 
 	if ((handle = accept(GetHandle(), (sockaddr*)&address[1], &address_size)) == INVALID_SOCKET_HANDLE)
 	{
+#if defined(FIO_LINUX)
+		switch (error = errno)
+		{
+			case EINTR:
+			case ECONNRESET:
+			case EINPROGRESS:
+			case EWOULDBLOCK:
+				error = 0;
+				return -1;
+		}
+#elif defined(FIO_WIN32)
 		switch (error = WSAGetLastError())
 		{
 			case WSAEINTR:
@@ -203,22 +216,30 @@ int  FIO::Socket::Accept(Socket& socket)
 				error = 0;
 				return -1;
 		}
-
-		return 0;
-	}
-
-	if (getsockname(GetHandle(), (sockaddr*)&address[0], &address_size) == SOCKET_ERROR)
-	{
-		error = WSAGetLastError();
-
-#if defined(FIO_LINUX)
-		close(handle);
-#elif defined(FIO_WIN32)
-		closesocket(handle);
 #endif
 
 		return 0;
 	}
+
+#if defined(FIO_LINUX)
+	if (getsockname(GetHandle(), (sockaddr*)&address[0], &address_size) == -1)
+	{
+		error = errno;
+
+		close(handle);
+
+		return 0;
+	}
+#elif defined(FIO_WIN32)
+	if (getsockname(GetHandle(), (sockaddr*)&address[0], &address_size) == SOCKET_ERROR)
+	{
+		error = WSAGetLastError();
+
+		closesocket(handle);
+
+		return 0;
+	}
+#endif
 
 	if (socket.IsOpen())
 		socket.Close();
@@ -298,12 +319,21 @@ bool FIO::Socket::Listen(uint32_t backlog)
 	if (!IsOpen() || IsConnected() || IsListening() || is_closing)
 		return false;
 
+#if defined(FIO_LINUX)
+	if (listen(GetHandle(), (int)(backlog & INT_MAX)) == -1)
+	{
+		error = errno;
+
+		return false;
+	}
+#elif defined(FIO_WIN32)
 	if (listen(GetHandle(), (int)(backlog & INT_MAX)) == SOCKET_ERROR)
 	{
 		error = WSAGetLastError();
 
 		return false;
 	}
+#endif
 
 	error        = 0;
 	is_listening = true;
@@ -320,14 +350,27 @@ bool FIO::Socket::Connect(const IPEndPoint& remote_ip_end_point)
 	socklen_t        address_size;
 	remote_ip_end_point.ToStorage(address, address_size);
 
+#if defined(FIO_LINUX)
+	if (connect(GetHandle(), (const sockaddr*)&address, address_size) == -1)
+	{
+		error = errno;
+
+		return false;
+	}
+#elif defined(FIO_WIN32)
 	if (connect(GetHandle(), (const sockaddr*)&address, address_size) == SOCKET_ERROR)
 	{
 		error = WSAGetLastError();
 
 		return false;
 	}
+#endif
 
+#if defined(FIO_LINUX)
+	if (getsockname(GetHandle(), (sockaddr*)&address, &address_size) == -1)
+#elif defined(FIO_WIN32)
 	if (getsockname(GetHandle(), (sockaddr*)&address, &address_size) == SOCKET_ERROR)
+#endif
 		; // TODO: this should cause an error but it's not THAT important or remotely likely to happen so bad practices will live on
 
 	IPEndPoint::FromAddress(ip_end_point_local, (const sockaddr&)address, address_size);
@@ -427,12 +470,21 @@ bool FIO::Socket::Shutdown(int type)
 	if (!IsOpen() || is_closing)
 		return false;
 
+#if defined(FIO_LINUX)
+	if (shutdown(GetHandle(), type) == -1)
+	{
+		error = errno;
+
+		return false;
+	}
+#elif defined(FIO_WIN32)
 	if (shutdown(GetHandle(), type) == SOCKET_ERROR)
 	{
 		error = WSAGetLastError();
 
 		return false;
 	}
+#endif
 
 	return true;
 }
@@ -462,6 +514,22 @@ bool FIO::Socket::Send(const void* buffer, size_t size, size_t& number_of_bytes_
 
 	int num_bytes_sent;
 
+#if defined(FIO_LINUX)
+	if ((num_bytes_sent = send(GetHandle(), (const char*)buffer, (int)(size & INT_MAX), 0)) == -1)
+	{
+		switch (error = errno)
+		{
+			case EINTR:
+			case ENOBUFS:
+			case EINPROGRESS:
+			case EWOULDBLOCK:
+				number_of_bytes_sent = 0;
+				return true;
+		}
+
+		return false;
+	}
+#elif defined(FIO_WIN32)
 	if ((num_bytes_sent = send(GetHandle(), (const char*)buffer, (int)(size & INT_MAX), 0)) == SOCKET_ERROR)
 	{
 		switch (error = WSAGetLastError())
@@ -476,6 +544,7 @@ bool FIO::Socket::Send(const void* buffer, size_t size, size_t& number_of_bytes_
 
 		return false;
 	}
+#endif
 
 	error                = 0;
 	number_of_bytes_sent = num_bytes_sent;
@@ -536,6 +605,22 @@ bool FIO::Socket::SendTo(const void* buffer, size_t size, const IPEndPoint& remo
 
 	int num_bytes_sent;
 
+#if defined(FIO_LINUX)
+	if ((num_bytes_sent = sendto(GetHandle(), (const char*)buffer, (int)(size & INT_MAX), 0, (const sockaddr*)&address, address_size)) == -1)
+	{
+		switch (error = errno)
+		{
+			case EINTR:
+			case ENOBUFS:
+			case EINPROGRESS:
+			case EWOULDBLOCK:
+				number_of_bytes_sent = 0;
+				return true;
+		}
+
+		return false;
+	}
+#elif defined(FIO_WIN32)
 	if ((num_bytes_sent = sendto(GetHandle(), (const char*)buffer, (int)(size & INT_MAX), 0, (const sockaddr*)&address, address_size)) == SOCKET_ERROR)
 	{
 		switch (error = WSAGetLastError())
@@ -550,6 +635,7 @@ bool FIO::Socket::SendTo(const void* buffer, size_t size, const IPEndPoint& remo
 
 		return false;
 	}
+#endif
 
 	error                = 0;
 	number_of_bytes_sent = num_bytes_sent;
@@ -611,6 +697,21 @@ bool FIO::Socket::Receive(void* buffer, size_t size, size_t& number_of_bytes_rec
 
 	int num_bytes_received;
 
+#if defined(FIO_LINUX)
+	if ((num_bytes_received = recv(GetHandle(), (char*)buffer, (int)(size & INT_MAX), 0)) == -1)
+	{
+		switch (error = errno)
+		{
+			case EINTR:
+			case EINPROGRESS:
+			case EWOULDBLOCK:
+				number_of_bytes_received = 0;
+				return true;
+		}
+
+		return false;
+	}
+#elif defined(FIO_WIN32)
 	if ((num_bytes_received = recv(GetHandle(), (char*)buffer, (int)(size & INT_MAX), 0)) == SOCKET_ERROR)
 	{
 		switch (error = WSAGetLastError())
@@ -624,6 +725,7 @@ bool FIO::Socket::Receive(void* buffer, size_t size, size_t& number_of_bytes_rec
 
 		return false;
 	}
+#endif
 
 	error                    = 0;
 	number_of_bytes_received = num_bytes_received;
@@ -683,6 +785,21 @@ bool FIO::Socket::ReceiveFrom(void* buffer, size_t size, IPEndPoint& remote_ip_e
 
 	int num_bytes_received;
 
+#if defined(FIO_LINUX)
+	if ((num_bytes_received = recvfrom(GetHandle(), (char*)buffer, (int)(size & INT_MAX), 0, (sockaddr*)&address, &address_size)) == -1)
+	{
+		switch (error = errno)
+		{
+			case EINTR:
+			case EINPROGRESS:
+			case EWOULDBLOCK:
+				number_of_bytes_received = 0;
+				return true;
+		}
+
+		return false;
+	}
+#elif defined(FIO_WIN32)
 	if ((num_bytes_received = recvfrom(GetHandle(), (char*)buffer, (int)(size & INT_MAX), 0, (sockaddr*)&address, &address_size)) == SOCKET_ERROR)
 	{
 		switch (error = WSAGetLastError())
@@ -696,6 +813,7 @@ bool FIO::Socket::ReceiveFrom(void* buffer, size_t size, IPEndPoint& remote_ip_e
 
 		return false;
 	}
+#endif
 
 	IPEndPoint::FromAddress(remote_ip_end_point, (const sockaddr&)address, address_size);
 

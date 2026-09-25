@@ -5,8 +5,6 @@
 #include <climits>
 
 #if defined(FIO_LINUX)
-	#define GetLastError()      errno
-
 	#define INVALID_FILE_HANDLE -1
  
 	#include <fcntl.h>
@@ -511,7 +509,7 @@ bool FIO::File::Read(void* buffer, size_t size, size_t& number_of_bytes_read)
 
 	if ((num_bytes_read = read(GetHandle(), buffer, size)) == -1)
 	{
-		error = ::GetLastError();
+		error = errno;
 
 		return false;
 	}
@@ -592,7 +590,7 @@ bool FIO::File::Write(const void* buffer, size_t size, size_t& number_of_bytes_w
 
 	if ((num_bytes_written = write(GetHandle(), buffer, size)) == -1)
 	{
-		error = ::GetLastError();
+		error = errno;
 
 		return false;
 	}
@@ -678,14 +676,19 @@ bool     FIO::File::Position_Select(int type)
 
 #if defined(FIO_LINUX)
 	if (lseek64(GetHandle(), (off_t)position[type], SEEK_SET) == -1)
+	{
+		error = errno;
+
+		return false;
+	}
 #elif defined(FIO_WIN32)
 	if (!SetFilePointerEx(GetHandle(), { .QuadPart = (LONGLONG)position[type] }, nullptr, FILE_BEGIN))
-#endif
 	{
 		error = ::GetLastError();
 
 		return false;
 	}
+#endif
 
 	position_type = type;
 

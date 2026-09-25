@@ -2,6 +2,8 @@
 #if defined(FIO_LINUX)
 	#include <sys/socket.h>
 
+	#include <netinet/in.h>
+
 	#define SD_BOTH    SHUT_RDWR
 	#define SD_SEND    SHUT_WR
 	#define SD_RECEIVE SHUT_RD
