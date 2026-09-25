@@ -13,6 +13,7 @@
 #endif
 
 #include "SpinLock.hpp"
+#include "TimeSpan.hpp"
 
 namespace FIO
 {
@@ -119,6 +120,9 @@ namespace FIO
 		}
 
 		bool Join();
+		// @return 0 on error
+		// @return -1 on timeout
+		int  Join(TimeSpan timeout);
 
 		bool Post(Function&& function);
 		bool Post(const Function& function);

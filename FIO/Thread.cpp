@@ -1,3 +1,4 @@
+#include "Timer.hpp"
 #include "Thread.hpp"
 
 #if defined(FIO_LINUX)
@@ -56,6 +57,40 @@ bool FIO::Thread::Join()
 	}
 
 	return true;
+}
+int  FIO::Thread::Join(TimeSpan timeout)
+{
+	if (timeout == TimeSpan::Infinite)
+		return Join() ? 1 : 0;
+
+	if (IsRunning())
+	{
+#if defined(FIO_LINUX)
+		Timer timer;
+
+		do
+			if (timer.GetElapsed() >= timeout)
+				return -1;
+		while (IsRunning());
+#elif defined(FIO_WIN32)
+		switch (WaitForSingleObject(GetHandle(), timeout.ToMilliseconds()))
+		{
+			case WAIT_TIMEOUT:
+				return -1;
+
+			case WAIT_OBJECT_0:
+				break;
+
+			default:
+				error = GetLastError();
+				return 0;
+		}
+#endif
+
+		error = 0;
+	}
+
+	return 1;
 }
 
 void FIO::Thread::Close()

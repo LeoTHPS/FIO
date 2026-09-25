@@ -1,3 +1,4 @@
+#include "Timer.hpp"
 #include "Thread.hpp"
 #include "ThreadPool.hpp"
 
@@ -78,6 +79,28 @@ bool FIO::ThreadPool::Join()
 				return false;
 
 	return true;
+}
+int  FIO::ThreadPool::Join(TimeSpan timeout)
+{
+	if (IsRunning())
+	{
+		Timer    timer;
+		TimeSpan elapsed;
+
+		for (auto thread : threads)
+		{
+			if ((elapsed = timer.GetElapsed()) >= timeout)
+				return -1;
+
+			switch (thread->Join(timeout - elapsed))
+			{
+				case 0:  return 0;
+				case -1: return -1;
+			}
+		}
+	}
+
+	return 1;
 }
 bool FIO::ThreadPool::Post(Function&& function)
 {

@@ -7,6 +7,8 @@
 	#include <Windows.h>
 #endif
 
+#include "TimeSpan.hpp"
+
 namespace FIO
 {
 	class Thread
@@ -58,6 +60,9 @@ namespace FIO
 		}
 
 		bool Join();
+		// @return 0 on error
+		// @return -1 on timeout
+		int  Join(TimeSpan timeout);
 
 		void Close();
 
