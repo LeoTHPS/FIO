@@ -191,9 +191,7 @@ bool FIO::SerialPort::Open(ThreadPool* pool)
 
 	if (pool != nullptr)
 	{
-#if defined(FIO_LINUX)
-		// TODO: implement linux
-#elif defined(FIO_WIN32)
+#if defined(FIO_WIN32)
 		if (!pool->Associate(GetHandle()))
 		{
 			error = ::GetLastError();

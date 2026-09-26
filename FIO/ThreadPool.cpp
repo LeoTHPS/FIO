@@ -4,6 +4,10 @@
 
 #if defined(FIO_LINUX)
 	#define INVALID_THREAD_POOL_HANDLE -1
+
+	#include <fcntl.h>
+	#include <unistd.h>
+	#include <liburing.h>
 #elif defined(FIO_WIN32)
 	#define INVALID_THREAD_POOL_HANDLE INVALID_HANDLE_VALUE
 #endif

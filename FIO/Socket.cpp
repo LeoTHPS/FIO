@@ -494,12 +494,10 @@ bool FIO::Socket::Shutdown(int type)
 
 bool FIO::Socket::Associate(ThreadPool& pool)
 {
-	if (!IsOpen() || is_closing)
+	if (!IsOpen() || is_closing || IsAssociated())
 		return false;
 
-#if defined(FIO_LINUX)
-	// TODO: implement linux
-#elif defined(FIO_WIN32)
+#if defined(FIO_WIN32)
 	if (!pool.Associate((HANDLE)GetHandle()))
 		return false;
 #endif
