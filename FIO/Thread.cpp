@@ -86,8 +86,6 @@ int  FIO::Thread::Join(TimeSpan timeout)
 				return 0;
 		}
 #endif
-
-		error = 0;
 	}
 
 	return 1;
@@ -121,14 +119,14 @@ bool FIO::Thread::Start(Main&& main)
 	this->is_running = true;
 
 #if defined(FIO_LINUX)
-	if (this->error = pthread_create(&this->handle, nullptr, &Detour, this))
+	if (this->error = pthread_create(&this->handle, nullptr, &Thread::Detour, this))
 	{
 		this->is_running = false;
 
 		return false;
 	}
 #elif defined(FIO_WIN32)
-	if ((this->handle = CreateThread(NULL, 0, &Detour, this, 0, NULL)) == INVALID_THREAD_HANDLE)
+	if ((this->handle = CreateThread(NULL, 0, &Thread::Detour, this, 0, NULL)) == INVALID_THREAD_HANDLE)
 	{
 		this->error      = GetLastError();
 		this->is_running = false;
