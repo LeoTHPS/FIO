@@ -1,6 +1,7 @@
 #include <format>
 #include <string>
 #include <thread>
+#include <cstring>
 #include <iostream>
 #include <iterator>
 
@@ -19,6 +20,9 @@
 #ifdef FIO_WIN32
 	#include <FIO/WinSock2.hpp>
 #endif
+
+#define THREAD_COUNT         4
+#define THREAD_IO_QUEUE_SIZE 100
 
 FIO::SpinLock    print_lock;
 const FIO::Timer print_timer;
@@ -119,9 +123,9 @@ class demo_file_in
 	FIO::ThreadPool threads;
 
 public:
-	demo_file_in(std::string_view path, size_t thread_count)
+	demo_file_in(std::string_view path)
 		: file(path, FIO::File::MODE_READ),
-		threads(thread_count)
+		threads(THREAD_COUNT, THREAD_IO_QUEUE_SIZE)
 	{
 	}
 
@@ -153,9 +157,9 @@ class demo_file_out
 	FIO::ThreadPool threads;
 
 public:
-	demo_file_out(std::string_view path, size_t thread_count)
+	demo_file_out(std::string_view path)
 		: file(path, FIO::File::MODE_WRITE | FIO::File::MODE_TRUNCATE),
-		threads(thread_count)
+		threads(THREAD_COUNT, THREAD_IO_QUEUE_SIZE)
 	{
 	}
 
@@ -193,8 +197,8 @@ class demo_socket_tcp
 	uint8_t         socket2_buffer[sizeof(socket1_buffer)];
 
 public:
-	demo_socket_tcp(FIO::IPEndPoint&& local_end_point, size_t thread_count)
-		: threads(thread_count),
+	demo_socket_tcp(FIO::IPEndPoint&& local_end_point)
+		: threads(THREAD_COUNT, THREAD_IO_QUEUE_SIZE),
 		end_point(std::move(local_end_point)),
 		socket1(FIO::Socket::TYPE_STREAM, FIO::Socket::PROTOCOL_TCP),
 		socket1_client(FIO::Socket::TYPE_STREAM, FIO::Socket::PROTOCOL_TCP),
@@ -270,8 +274,8 @@ class demo_socket_udp
 	uint8_t         socket2_buffer[sizeof(socket1_buffer)];
 
 public:
-	demo_socket_udp(FIO::IPEndPoint&& local_end_point, size_t thread_count)
-		: threads(thread_count),
+	demo_socket_udp(FIO::IPEndPoint&& local_end_point)
+		: threads(THREAD_COUNT, THREAD_IO_QUEUE_SIZE),
 		end_point(std::move(local_end_point)),
 		socket1(FIO::Socket::TYPE_DGRAM, FIO::Socket::PROTOCOL_UDP),
 		socket2(FIO::Socket::TYPE_DGRAM, FIO::Socket::PROTOCOL_UDP)
@@ -322,9 +326,9 @@ class demo_socket_raw_sniff_v4
 	FIO::IPEndPoint end_point;
 
 public:
-	demo_socket_raw_sniff_v4(const FIO::IPAddress& address, size_t thread_count)
+	demo_socket_raw_sniff_v4(const FIO::IPAddress& address)
 		: socket(FIO::Socket::TYPE_RAW, FIO::Socket::PROTOCOL_IPV4),
-		threads(thread_count),
+		threads(THREAD_COUNT, THREAD_IO_QUEUE_SIZE),
 		end_point{
 			.Host = address,
 			.Port = 0
@@ -365,6 +369,31 @@ private:
 
 		if (!socket.GetLastError())
 			socket.Receive(buffer, size, std::bind(&demo_socket_raw_sniff_v4::on_receive, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+	}
+};
+
+class demo_thread_pool
+{
+	FIO::ThreadPool threads;
+
+public:
+	demo_thread_pool()
+		: threads(THREAD_COUNT, THREAD_IO_QUEUE_SIZE)
+	{
+	}
+
+	void run()
+	{
+		print("threads.Start() -> {}", threads.Start());
+		print("threads.Post() -> {}", threads.Post(std::bind(&demo_thread_pool::do_the_thing, this)));
+		// print("threads.Shutdown() -> {}", (threads.Shutdown(), true));
+		print("threads.Join() -> {}", threads.Join());
+	}
+
+private:
+	void do_the_thing()
+	{
+		print("threads.Post() -> {}", threads.Post(std::bind(&demo_thread_pool::do_the_thing, this)));
 	}
 };
 
@@ -455,9 +484,9 @@ class demo_serial_port
 	FIO::ThreadPool threads;
 
 public:
-	demo_serial_port(std::string_view path, uint32_t baud, size_t thread_count)
+	demo_serial_port(std::string_view path, uint32_t baud)
 		: port(path, baud, FIO::SerialPort::FLAG_DTR_CONTROL_ENABLE | FIO::SerialPort::FLAG_RTS_CONTROL_DISABLE),
-		threads(thread_count)
+		threads(THREAD_COUNT, THREAD_IO_QUEUE_SIZE)
 	{
 	}
 
@@ -502,8 +531,8 @@ class demo_mpsc_queue
 	FIO::ThreadPool     threads;
 
 public:
-	demo_mpsc_queue(size_t thread_count)
-		: threads(thread_count)
+	demo_mpsc_queue()
+		: threads(THREAD_COUNT, THREAD_IO_QUEUE_SIZE)
 	{
 	}
 
@@ -513,7 +542,7 @@ public:
 
 		for (int i = 0; i < 100; ++i)
 			threads.Post([this, i](FIO::ThreadPool& pool) {
-				queue.Push((int&&)i);
+				queue.Push(i);
 
 				print("queue.Push({}) -> {}", i, true);
 			});
@@ -533,28 +562,28 @@ public:
 	}
 };
 
-#define THREAD_COUNT 4
-
 int main(int argc, char* argv[])
 {
 	// demo_dns("www.google.com").run();
 
 	// demo_ws2().run();
 
-	// demo_file_in("./demo.bin", THREAD_COUNT).run();
-	// demo_file_out("./demo.bin", THREAD_COUNT).run();
+	// demo_file_in("./demo.bin").run();
+	// demo_file_out("./demo.bin").run();
 
-	// demo_socket_tcp(FIO::IPEndPoint::Loopback(9001), THREAD_COUNT).run();
-	// demo_socket_udp(FIO::IPEndPoint::Loopback(9001), THREAD_COUNT).run();
-	// demo_socket_raw_sniff_v4(FIO::IPAddress::Loopback, THREAD_COUNT).run();
+	// demo_socket_tcp(FIO::IPEndPoint::Loopback(9001)).run();
+	// demo_socket_udp(FIO::IPEndPoint::Loopback(9001)).run();
+	// demo_socket_raw_sniff_v4(FIO::IPAddress::Loopback).run();
+
+	// demo_thread_pool().run();
 
 	// demo_directory().run();
 
 	// demo_byte_buffer().run();
 
-	// demo_serial_port("\\\\.\\\\COM5", 115200, THREAD_COUNT).run();
+	// demo_serial_port("\\\\.\\\\COM5", 115200).run();
 
-	// demo_mpsc_queue(THREAD_COUNT).run();
+	// demo_mpsc_queue().run();
 
 	return 0;
 }
