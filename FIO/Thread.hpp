@@ -33,6 +33,8 @@ namespace FIO
 		Thread(const Thread&) = delete;
 
 	public:
+		static void Sleep(TimeSpan duration);
+
 		static void OpenCurrent(Thread& thread);
 
 		Thread();

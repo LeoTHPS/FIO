@@ -4,10 +4,28 @@
 #if defined(FIO_LINUX)
 	#define INVALID_THREAD_HANDLE 0
 
+	#include <ctime>
 	#include <cerrno>
 #elif defined(FIO_WIN32)
 	#define INVALID_THREAD_HANDLE NULL
+
+	#include <Windows.h>
 #endif
+
+void FIO::Thread::Sleep(TimeSpan duration)
+{
+#if defined(FIO_LINUX)
+	timespec ts =
+	{
+		.tv_sec  = duration.ToSeconds(),
+		.tv_nsec = duration.ToNanoseconds() - (duration.ToSeconds() * 1000000000)
+	};
+
+	nanosleep(&ts, nullptr);
+#elif defined(FIO_WIN32)
+	::Sleep(duration.ToMilliseconds());
+#endif
+}
 
 void FIO::Thread::OpenCurrent(Thread& thread)
 {
