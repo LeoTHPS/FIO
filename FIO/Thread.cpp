@@ -17,8 +17,8 @@ void FIO::Thread::Sleep(TimeSpan duration)
 #if defined(FIO_LINUX)
 	timespec ts =
 	{
-		.tv_sec  = duration.ToSeconds(),
-		.tv_nsec = duration.ToNanoseconds() - (duration.ToSeconds() * 1000000000)
+		.tv_sec  = (decltype(timespec::tv_sec))duration.ToSeconds(),
+		.tv_nsec = (decltype(timespec::tv_nsec))(duration.ToNanoseconds() - (duration.ToSeconds() * 1000000000))
 	};
 
 	nanosleep(&ts, nullptr);
