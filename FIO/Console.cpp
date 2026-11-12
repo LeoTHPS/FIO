@@ -3,8 +3,6 @@
 #if defined(FIO_LINUX)
 	#include <errno.h>
 	#include <unistd.h>
-#elif defined(FIO_WIN32)
-	#include <Windows.h>
 #endif
 
 #if defined(FIO_LINUX)

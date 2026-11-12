@@ -12,6 +12,7 @@
 #elif defined(FIO_WIN32)
 	#include <Ws2Tcpip.h>
 	#include <Ws2Ipdef.h>
+	#include <mstcpip.h>
 	#include <Mswsock.h>
 
 	#define INVALID_SOCKET_HANDLE INVALID_SOCKET

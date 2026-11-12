@@ -3,7 +3,7 @@
 #include <string>
 
 #if defined(FIO_WIN32)
-	#include <windef.h>
+	#include <Windows.h>
 #endif
 
 namespace FIO
