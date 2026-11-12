@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include <functional>
 
 #if defined(FIO_LINUX)
@@ -11,6 +12,12 @@
 
 namespace FIO
 {
+#if defined(FIO_LINUX)
+	typedef std::uintptr_t ThreadId;
+#elif defined(FIO_WIN32)
+	typedef DWORD          ThreadId;
+#endif
+
 	class Thread
 	{
 	public:
@@ -20,6 +27,7 @@ namespace FIO
 		bool      is_open;
 		bool      is_running;
 
+		ThreadId  id;
 		Main      main;
 #if defined(FIO_LINUX)
 		int       error;
@@ -33,9 +41,11 @@ namespace FIO
 		Thread(const Thread&) = delete;
 
 	public:
-		static void Sleep(TimeSpan duration);
+		static ThreadId GetCurrentId();
 
-		static void OpenCurrent(Thread& thread);
+		static void     Sleep(TimeSpan duration);
+
+		static void     OpenCurrent(Thread& thread);
 
 		Thread();
 
@@ -49,6 +59,11 @@ namespace FIO
 		constexpr bool IsRunning() const
 		{
 			return is_running;
+		}
+
+		constexpr auto GetId() const
+		{
+			return id;
 		}
 
 		constexpr auto GetHandle() const

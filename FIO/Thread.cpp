@@ -12,6 +12,15 @@
 	#include <Windows.h>
 #endif
 
+FIO::ThreadId FIO::Thread::GetCurrentId()
+{
+#if defined(FIO_LINUX)
+	return (ThreadId)pthread_self();
+#elif defined(FIO_WIN32)
+	return GetCurrentThreadId();
+#endif
+}
+
 void FIO::Thread::Sleep(TimeSpan duration)
 {
 #if defined(FIO_LINUX)
@@ -119,6 +128,7 @@ void FIO::Thread::Close()
 		CloseHandle(GetHandle());
 #endif
 
+		id         = ThreadId();
 		error      = 0;
 		handle     = INVALID_THREAD_HANDLE;
 
@@ -143,8 +153,10 @@ bool FIO::Thread::Start(Main&& main)
 
 		return false;
 	}
+
+	this->id = (ThreadId)this->handle;
 #elif defined(FIO_WIN32)
-	if ((this->handle = CreateThread(NULL, 0, &Thread::Detour, this, 0, NULL)) == INVALID_THREAD_HANDLE)
+	if ((this->handle = CreateThread(NULL, 0, &Thread::Detour, this, 0, &id)) == INVALID_THREAD_HANDLE)
 	{
 		this->error      = GetLastError();
 		this->is_running = false;
