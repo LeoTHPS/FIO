@@ -46,6 +46,7 @@ namespace FIO
 			return Write(std::vformat(format, std::make_format_args(args ...)));
 		}
 
+		static bool WriteLine();
 		static bool WriteLine(std::string_view value);
 		template<typename ... TArgs>
 		static bool WriteLine(std::string_view format, TArgs ... args)

@@ -161,6 +161,11 @@ bool FIO::Console::Write(std::string_view value)
 
 	return true;
 }
+
+bool FIO::Console::WriteLine()
+{
+	return Write(GetEOL());
+}
 bool FIO::Console::WriteLine(std::string_view value)
 {
 	RecursiveSpinLockGuard guard(lock);
