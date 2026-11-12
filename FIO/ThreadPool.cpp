@@ -323,7 +323,7 @@ void FIO::ThreadPool::Thread_Main(Thread& thread, ThreadContext& context)
 
 			break;
 		}
-	} while (Thread_HandleIO(context.Thread, (IOContext*)entry.lpCompletionKey, entry.dwNumberOfBytesTransferred));
+	} while (Thread_HandleIO(context.Thread, (IOContext*)entry.lpOverlapped, entry.dwNumberOfBytesTransferred));
 #endif
 
 #if defined(FIO_LINUX)
