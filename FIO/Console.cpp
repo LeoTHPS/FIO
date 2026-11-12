@@ -77,9 +77,8 @@ bool FIO::Console::SetTitle(std::string_view value)
 
 bool FIO::Console::Write(std::string_view value)
 {
-	auto buffer = (const uint8_t*)value.data();
-
 #if defined(FIO_LINUX)
+	auto    buffer              = (const uint8_t*)value.data();
 	ssize_t num_bytes_written   = 0;
 	size_t  num_bytes_remaining = value.length() * sizeof(char);
 
@@ -111,8 +110,9 @@ bool FIO::Console::Write(std::string_view value)
 
 	if (GetConsoleMode(handle, &mode))
 	{
-		DWORD  num_chars_written;
-		size_t num_chars_remaining = value.length();
+		auto  buffer              = value.data();
+		DWORD num_chars_written   = 0;
+		DWORD num_chars_remaining = value.length();
 
 		do
 		{
@@ -123,7 +123,7 @@ bool FIO::Console::Write(std::string_view value)
 				return false;
 			}
 
-			buffer              += num_chars_written * sizeof(char);
+			buffer              += num_chars_written;
 			num_chars_remaining -= num_chars_written;
 		} while (num_chars_remaining);
 	}
@@ -133,22 +133,25 @@ bool FIO::Console::Write(std::string_view value)
 
 		return false;
 	}
-
-	DWORD num_bytes_written   = 0;
-	DWORD num_bytes_remaining = value.length() * sizeof(char);
-
-	do
+	else
 	{
-		if (!WriteFile(handle, buffer, num_bytes_remaining, &num_bytes_written, nullptr))
+		auto  buffer              = (const uint8_t*)value.data();
+		DWORD num_bytes_written   = 0;
+		DWORD num_bytes_remaining = value.length() * sizeof(char);
+
+		do
 		{
-			error = ::GetLastError();
+			if (!WriteFile(handle, buffer, num_bytes_remaining, &num_bytes_written, nullptr))
+			{
+				error = ::GetLastError();
 
-			return false;
-		}
+				return false;
+			}
 
-		buffer              += num_bytes_written;
-		num_bytes_remaining -= num_bytes_written;
-	} while (num_bytes_remaining);
+			buffer              += num_bytes_written;
+			num_bytes_remaining -= num_bytes_written;
+		} while (num_bytes_remaining);
+	}
 #endif
 
 	return true;
