@@ -12,12 +12,12 @@ namespace FIO
 {
 	class Console
 	{
-		static std::string eol;
-		static SpinLock    lock;
+		static std::string       eol;
+		static RecursiveSpinLock lock;
 #if defined(FIO_LINUX)
-		static int         error;
+		static int               error;
 #elif defined(FIO_WIN32)
-		static DWORD       error;
+		static DWORD             error;
 #endif
 
 		Console() = delete;
@@ -36,7 +36,7 @@ namespace FIO
 		template<typename F>
 		static void Lock(F&& function)
 		{
-			SpinLockGuard guard(lock);
+			RecursiveSpinLockGuard guard(lock);
 
 			function();
 		}
