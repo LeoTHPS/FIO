@@ -6,11 +6,14 @@
 	#include <Windows.h>
 #endif
 
+#include "SpinLock.hpp"
+
 namespace FIO
 {
 	class Console
 	{
 		static std::string eol;
+		static SpinLock    lock;
 #if defined(FIO_LINUX)
 		static int         error;
 #elif defined(FIO_WIN32)
