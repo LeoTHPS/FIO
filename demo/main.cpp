@@ -1,6 +1,5 @@
 #include <format>
 #include <string>
-#include <thread>
 #include <cstring>
 #include <iostream>
 #include <iterator>
@@ -10,6 +9,7 @@
 #include <FIO/File.hpp>
 #include <FIO/Timer.hpp>
 #include <FIO/Socket.hpp>
+#include <FIO/Console.hpp>
 #include <FIO/SpinLock.hpp>
 #include <FIO/MPSCQueue.hpp>
 #include <FIO/Directory.hpp>
@@ -24,6 +24,8 @@
 #define THREAD_COUNT         4
 #define THREAD_IO_QUEUE_SIZE 100
 
+// TODO: replace print with FIO::Console::WriteLine
+
 FIO::SpinLock    print_lock;
 const FIO::Timer print_timer;
 
@@ -35,7 +37,7 @@ void print(std::string_view format, T ... args)
 	FIO::SpinLockGuard lock(print_lock);
 
 	std::format_to(it, "[{:.6f}] ", print_timer.GetElapsed().ToMicroseconds() / 1000000.0f);
-	std::cout << '[' << std::this_thread::get_id() << "] ";
+	std::cout << '[' << FIO::Thread::GetCurrentId() << "] ";
 
 	if constexpr (sizeof...(T) == 0)
 		std::cout << format;
@@ -52,7 +54,7 @@ void print(std::wstring_view format, T ... args)
 	FIO::SpinLockGuard lock(print_lock);
 
 	std::format_to(it, L"[{:.6f}] ", print_timer.GetElapsed().ToMicroseconds() / 1000000.0f);
-	std::wcout << '[' << std::this_thread::get_id() << "] ";
+	std::wcout << '[' << FIO::Thread::GetCurrentId() << "] ";
 
 	if constexpr (sizeof...(T) == 0)
 		std::wcout << format;
