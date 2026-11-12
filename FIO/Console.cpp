@@ -6,19 +6,17 @@
 #endif
 
 #if defined(FIO_LINUX)
-std::string            FIO::Console::eol   = "\n";
-FIO::RecursiveSpinLock FIO::Console::lock;
-int                    FIO::Console::error = 0;
+std::string   FIO::Console::eol   = "\n";
+FIO::SpinLock FIO::Console::lock;
+int           FIO::Console::error = 0;
 #elif defined(FIO_WIN32)
-std::string            FIO::Console::eol   = "\r\n";
-FIO::RecursiveSpinLock FIO::Console::lock;
-DWORD                  FIO::Console::error = ERROR_SUCCESS;
+std::string   FIO::Console::eol   = "\r\n";
+FIO::SpinLock FIO::Console::lock;
+DWORD         FIO::Console::error = ERROR_SUCCESS;
 #endif
 
 bool FIO::Console::Clear()
 {
-	RecursiveSpinLockGuard guard(lock);
-
 #if defined(FIO_LINUX)
 	return Write("\033[2J\033[3J\033[H");
 #elif defined(FIO_WIN32)
@@ -65,15 +63,11 @@ bool FIO::Console::Clear()
 
 void FIO::Console::SetEOL(std::string_view value)
 {
-	RecursiveSpinLockGuard guard(lock);
-
 	eol.assign(value);
 }
 
 bool FIO::Console::SetTitle(std::string_view value)
 {
-	RecursiveSpinLockGuard guard(lock);
-
 #if defined(FIO_LINUX)
 	return Write("\033]0;") && Write(value) && Write("\007");
 #elif defined(FIO_WIN32)
@@ -83,8 +77,6 @@ bool FIO::Console::SetTitle(std::string_view value)
 
 bool FIO::Console::Write(std::string_view value)
 {
-	RecursiveSpinLockGuard guard(lock);
-
 	auto buffer = (const uint8_t*)value.data();
 
 #if defined(FIO_LINUX)
@@ -168,7 +160,5 @@ bool FIO::Console::WriteLine()
 }
 bool FIO::Console::WriteLine(std::string_view value)
 {
-	RecursiveSpinLockGuard guard(lock);
-
 	return Write(value) && Write(GetEOL());
 }
